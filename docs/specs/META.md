@@ -6,18 +6,18 @@ This document defines the format, rules, and procedures for creating and maintai
 
 Specifications provide AI coding agents with deterministic context about system behavior, interfaces, and architectural decisions. They enable agents to make safe, informed changes without extensive codebase exploration.
 
-## Current Project State (Bootstrap)
+## Current Project State
 
-TuneDraft is in a **pre-code bootstrap state**: the repository contains no source code yet — only `README.md` (see [ADR-0001](decisions/0001-bootstrap-spec-system-before-code.md)).
+TuneDraft has passed the bootstrap threshold: **roadmap stage 1 is complete** — the repository contains the first code, the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)). Domain features are not implemented yet: `src/domain/`, `src/application/`, and `src/infrastructure/` hold layer-rule READMEs, and the shipped modules are the root entry files plus the i18n dictionary (`src/i18n/`, decision №31).
 
-The spec system, however, is no longer an empty skeleton: the six real domains of the intended system — `tabulature`, `layout-engine`, `editing`, `app-shell`, `storage`, `rendering` — are fully specified (see [INDEX.md](INDEX.md)), derived from the 40 numbered decisions of `docs/КАРТА-ПРОЕКТА.md` (referenced as `(№NN)`). The bootstrap exemplar `domains/placeholder-domain/` was deleted when these domains landed, per its own banner.
+The spec system itself is complete: the six real domains of the intended system — `tabulature`, `layout-engine`, `editing`, `app-shell`, `storage`, `rendering` — are fully specified (see [INDEX.md](INDEX.md)), derived from the 40 numbered decisions of `docs/КАРТА-ПРОЕКТА.md` (referenced as `(№NN)`). The bootstrap exemplar `domains/placeholder-domain/` was deleted when these domains landed, per its own banner.
 
-The remaining placeholder material lives only in `architecture/`: [layers.md](architecture/layers.md) and [data-flow.md](architecture/data-flow.md) still carry **Bootstrap placeholder** banners. Unlike the deleted exemplar, they stay until the code they govern exists — they define forward-looking MUST rules, not a format demo.
+The `architecture/` placeholders have transitioned: [layers.md](architecture/layers.md) now maps the canonical layers onto the real `src/` directories and records an R1–R6 audit of the shipped code; [data-flow.md](architecture/data-flow.md) keeps its five-stage contract forward-looking until the first editor operation lands (roadmap stages 4–8).
 
 Implications for all spec authors:
 
-1. Specs created during bootstrap describe **intent and forward-looking rules**, not existing behavior. Every such claim carries a `<!-- TODO: verify -->` marker.
-2. When the first code lands, a `vibespec-create` pass (or manual update) resolves each TODO marker: verify the claim against the code, correct it, or delete the section if it no longer applies.
+1. Claims about code that does not exist yet still carry a `<!-- TODO: verify -->` marker; claims about shipped code are stated plainly (verified against the tree).
+2. When code for a marked feature lands, a `vibespec-create` pass (or manual update) resolves each TODO marker: verify the claim against the code, correct it, or delete the section if it no longer applies.
 3. A TODO marker is a **claim against code that does not exist yet**. It is never a permanent state: a marker surviving past the introduction of the relevant code is a defect in the spec system.
 
 ## Principles
@@ -119,7 +119,7 @@ How to add new behavior without breaking existing functionality.
 - [link](relative/path.md) — context of relationship
 ```
 
-**Bootstrap rule:** while the project has no code, `Key Files` and `Core Types` sections state `None yet` with a TODO marker instead of inventing paths or types.
+**Bootstrap rule:** for as long as a domain has no code, its `Key Files` and `Core Types` sections state `None yet` with a TODO marker instead of inventing paths or types. When the domain's code lands, fill these sections with real paths and types and resolve the marker.
 
 ### Domain Detail (`domains/*/<name>.md`)
 

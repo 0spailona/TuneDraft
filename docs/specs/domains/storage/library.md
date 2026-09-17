@@ -11,7 +11,7 @@ actions through a context menu (№30, №38).
 
 ## Key Files
 
-None yet — the repository contains no source code. <!-- TODO: verify when library code lands -->
+None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). <!-- TODO: verify when library code lands -->
 
 ## Behavior
 

@@ -13,7 +13,7 @@ Specifications are the **source of truth** about the intended behavior of the sy
 - Organized by **domains** (conceptual areas), NOT by repository file structure.
 - **Contracts** are a separate first-class entity for describing boundaries between layers.
 
-**This project's current state:** pre-code bootstrap (see [ADR-0001](decisions/0001-bootstrap-spec-system-before-code.md)). Until the first source code lands, specs describe intent and carry `<!-- TODO: verify -->` markers on every code-dependent claim. Section 6 defines the transition workflow.
+**This project's current state:** scaffold landed (see [ADR-0003](decisions/0003-src-layer-directories.md)). Roadmap stage 1 shipped the Expo toolchain and the `src/` layer skeleton; domain features remain unimplemented, so their specs still carry `<!-- TODO: verify -->` markers on code-dependent claims. Section 6 defines the marker-resolution workflow that applies as each stage lands.
 
 ---
 

@@ -1,12 +1,12 @@
 # Spec Index
 
-Navigation for TuneDraft's specification system. Project status: **pre-code bootstrap** — no source code exists yet ([ADR-0001](decisions/0001-bootstrap-spec-system-before-code.md)). Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
+Navigation for TuneDraft's specification system. Project status: **scaffold landed** — roadmap stage 1 is complete: the Expo toolchain and the `src/` layer skeleton exist ([ADR-0003](decisions/0003-src-layer-directories.md)); domain features (model, layout, editing, storage, rendering) are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
 
 ## Task → Spec
 
 | Task | Read first | Then |
 | --- | --- | --- |
-| Write the first code in this repo (roadmap stage 1) | [architecture/layers.md](architecture/layers.md) | [architecture/data-flow.md](architecture/data-flow.md), [WORKFLOW.md](WORKFLOW.md) §6 |
+| Add code to the `src/` layer skeleton (roadmap stages 2–10; stage 1 is done, see [ADR-0003](decisions/0003-src-layer-directories.md)) | [architecture/layers.md](architecture/layers.md) | [architecture/data-flow.md](architecture/data-flow.md), [WORKFLOW.md](WORKFLOW.md) §6 |
 | Implement the notebook data model (roadmap stage 2) | [domains/tabulature/README.md](domains/tabulature/README.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
 | Implement the layout engine: geometry, column widths, wrap rules (stage 3) | [domains/layout-engine.md](domains/layout-engine.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md), [domains/rendering/README.md](domains/rendering/README.md) |
 | Implement the Skia screen renderer (stage 4) | [domains/rendering/README.md](domains/rendering/README.md) | [domains/layout-engine.md](domains/layout-engine.md), [architecture/layers.md](architecture/layers.md) |
@@ -21,12 +21,12 @@ Navigation for TuneDraft's specification system. Project status: **pre-code boot
 | Define an interface between two layers | [contracts/_template.md](contracts/_template.md) | [architecture/layers.md](architecture/layers.md) |
 | Change dependency/architecture rules | [architecture/layers.md](architecture/layers.md) | create an ADR from [decisions/_template.md](decisions/_template.md) |
 | Understand why a decision was made | [decisions/](decisions/) | [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md) (source of №NN) |
-| Resolve a `TODO: verify` marker | [WORKFLOW.md](WORKFLOW.md) §5–6 | [META.md](META.md) "Current Project State (Bootstrap)" |
+| Resolve a `TODO: verify` marker | [WORKFLOW.md](WORKFLOW.md) §5–6 | [META.md](META.md) "Current Project State" |
 | Learn how to maintain specs | [WORKFLOW.md](WORKFLOW.md) | [META.md](META.md) |
 
 ## Dependency Graph
 
-No runtime dependency graph exists — the repository has no code. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
+The runtime tree is the stage-1 scaffold (root `App.tsx`/`index.ts` + `src/` layer skeleton, [ADR-0003](decisions/0003-src-layer-directories.md)); no domain logic is implemented yet, so the runtime dependency graph is still trivial. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
 
 ```
                 ┌─────────────────────────────────┐
@@ -91,5 +91,6 @@ docs/specs/
 └── decisions/
     ├── _template.md                           ADR template
     ├── 0001-bootstrap-spec-system-before-code.md
-    └── 0002-specs-live-in-docs-specs.md
+    ├── 0002-specs-live-in-docs-specs.md
+    └── 0003-src-layer-directories.md          src/ layer directories: domain/application/infrastructure/i18n (stage 1)
 ```

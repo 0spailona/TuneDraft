@@ -8,7 +8,7 @@ Editing turns touch input into mutations of the notebook model. It owns selectio
 
 ## Key Files
 
-None yet — the repository contains no source code. <!-- TODO: verify when first editing code lands -->
+None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). <!-- TODO: verify when first editing code lands -->
 
 Intended placement (see [layers.md](../../architecture/layers.md)): mutation orchestration lives in the Application layer; gesture and menu UI glue sits at the Entry-Points level. <!-- TODO: verify -->
 

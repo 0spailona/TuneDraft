@@ -1,6 +1,6 @@
 # App Shell
 
-> **Bootstrap-era spec.** Written before any source code exists (see [ADR-0001](../decisions/0001-bootstrap-spec-system-before-code.md)). Every claim about code that does not exist yet carries a `<!-- TODO: verify -->` marker. Decision references `(№NN)` point to [КАРТА-ПРОЕКТА.md](../../КАРТА-ПРОЕКТА.md).
+> **Scaffold landed** (roadmap stage 1: Expo scaffold + `src/` skeleton, [ADR-0003](../decisions/0003-src-layer-directories.md)). Claims about implemented code below are verified against the tree; claims about features not yet built (screens, toolbar, virtualization, gestures) still carry `<!-- TODO: verify -->` markers. Decision references `(№NN)` point to [КАРТА-ПРОЕКТА.md](../../КАРТА-ПРОЕКТА.md).
 
 ## Purpose
 
@@ -8,11 +8,33 @@ The app shell is the outermost runtime layer of TuneDraft: it owns screen naviga
 
 ## Key Files
 
-None yet — the repository contains no source code. <!-- TODO: verify -->
+- `App.tsx` — root component (Expo entry point); currently a stub screen rendering the app name from the dictionary; screens, toolbar, and mode state land in roadmap stages 5–7.
+- `index.ts` — component registration (`registerRootComponent`), wiring only (R4).
+- `src/i18n/index.ts` — `t(key)` lookup over the dictionary; the single channel components use for user-visible strings (№31).
+- `src/i18n/ru.ts` — base Russian dictionary (keys `app.name`, `toolbar.save`); grows as shell UI lands.
+- `src/i18n/__tests__/i18n.test.ts` — dictionary smoke tests (№34).
+
+Shell screens (Library, Editor, toolbar, mode switch) have no files yet — their roadmap stages have not run.
 
 ## Core Types
 
-None yet. <!-- TODO: verify -->
+The only shell-owned types shipped so far are the dictionary types (№31):
+
+```ts
+// src/i18n/ru.ts
+export const ru = {
+  'app.name': 'TuneDraft',
+  'toolbar.save': 'Сохранить',
+} as const;
+
+export type Dictionary = typeof ru;
+export type TranslationKey = keyof Dictionary;
+
+// src/i18n/index.ts
+export function t(key: TranslationKey): string;
+```
+
+A misspelled key is a compile error (`TranslationKey` is a union of literal keys); components hold keys only, never string values. Screen/mode/navigation types (Library ↔ Editor state, Read/Edit mode, Back contract) land with their roadmap stages.
 
 ## Flow
 
@@ -61,7 +83,7 @@ Toolbar action dispatch (every action follows the five-stage pipeline of [archit
 
 | Parameter | Default | Valid values / notes | Source |
 | --------- | ------- | -------------------- | ------ |
-| `minSdkVersion` | 24 (Android 7.0) | Floor of the current stack (Expo SDK 54+, Skia ≥ 21, RN 0.86 ≥ 24); raised later only via `expo-build-properties` when a library demands it | №23 |
+| `minSdkVersion` | 24 (Android 7.0) | Floor of the current stack — verified statically (Expo SDK 57, RN 0.86.3: `expo export` passes; default `minSdkVersion` 24 comes from the `expo-root-project` Gradle plugin and RN's own manifest, no override present); raised later only via `expo-build-properties` when a library demands it | №23 |
 | UI language | Russian (base) | English as an addable option; all strings via dictionary | №31 |
 | Theme | Single hardcoded MVP theme | Font + color theme system arrives after MVP | №32 |
 | Undo/Redo depth | 3 steps | Applies to every model mutation | №25, №37 |

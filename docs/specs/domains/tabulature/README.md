@@ -8,7 +8,7 @@ The `tabulature` domain is the pure data model of a TuneDraft notebook: the enti
 
 ## Key Files
 
-None yet — the repository contains no source code. Roadmap stage 2 (КАРТА §3) implements this model as pure TypeScript in the Domain layer defined by [architecture/layers.md](../../architecture/layers.md). <!-- TODO: verify when stage-2 model code lands -->
+None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). Roadmap stage 2 (КАРТА §3) implements this model as pure TypeScript in the Domain layer defined by [architecture/layers.md](../../architecture/layers.md). <!-- TODO: verify when stage-2 model code lands -->
 
 ## Core Types
 

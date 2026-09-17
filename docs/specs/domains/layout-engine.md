@@ -8,7 +8,7 @@ The layout engine is the single pure-JS geometry kernel of TuneDraft: it convert
 
 ## Key Files
 
-None yet — the repository contains no source code. Roadmap stage 3 (КАРТА §3) implements the engine as pure TypeScript in the Domain layer defined by [architecture/layers.md](../architecture/layers.md), with unit tests as the stage's acceptance criterion (№34). <!-- TODO: verify when stage-3 layout code lands -->
+None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). Roadmap stage 3 (КАРТА §3) implements the engine as pure TypeScript in the Domain layer defined by [architecture/layers.md](../architecture/layers.md), with unit tests as the stage's acceptance criterion (№34). <!-- TODO: verify when stage-3 layout code lands -->
 
 ## Core Types
 
