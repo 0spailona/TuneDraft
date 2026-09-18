@@ -8,7 +8,7 @@ Specifications provide AI coding agents with deterministic context about system 
 
 ## Current Project State
 
-TuneDraft has passed the bootstrap threshold: **roadmap stage 1 is complete** — the repository contains the first code, the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)). Domain features are not implemented yet: `src/domain/`, `src/application/`, and `src/infrastructure/` hold layer-rule READMEs, and the shipped modules are the root entry files plus the i18n dictionary (`src/i18n/`, decision №31).
+TuneDraft has passed the bootstrap threshold: **roadmap stages 1–2 are complete** — the repository contains the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)) plus the tabulature notebook model in `src/domain/tabulature/` (entities, mutations, fixtures; unit tests per №34). `src/application/` and `src/infrastructure/` still hold layer-rule READMEs only; layout, editing, storage, and rendering remain for stages 3–8.
 
 The spec system itself is complete: the six real domains of the intended system — `tabulature`, `layout-engine`, `editing`, `app-shell`, `storage`, `rendering` — are fully specified (see [INDEX.md](INDEX.md)), derived from the 40 numbered decisions of `docs/КАРТА-ПРОЕКТА.md` (referenced as `(№NN)`). The bootstrap exemplar `domains/placeholder-domain/` was deleted when these domains landed, per its own banner.
 

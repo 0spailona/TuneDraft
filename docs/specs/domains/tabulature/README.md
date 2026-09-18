@@ -1,6 +1,6 @@
 # Tabulature
 
-> **Bootstrap spec.** This domain is specified before any code exists (see [ADR-0001](../../decisions/0001-bootstrap-spec-system-before-code.md)). Claims about code that does not exist yet carry a `<!-- TODO: verify -->` marker. Citations of the form (№NN) refer to the numbered decisions table in `docs/КАРТА-ПРОЕКТА.md`.
+> **Model landed (roadmap stage 2).** The pure TypeScript model lives in `src/domain/tabulature/` (layer layout per [ADR-0003](../../decisions/0003-src-layer-directories.md)). Remaining `TODO: verify` markers in this tree refer to later stages. Citations of the form (№NN) refer to the numbered decisions table in `docs/КАРТА-ПРОЕКТА.md`.
 
 ## Purpose
 
@@ -8,11 +8,27 @@ The `tabulature` domain is the pure data model of a TuneDraft notebook: the enti
 
 ## Key Files
 
-None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). Roadmap stage 2 (КАРТА §3) implements this model as pure TypeScript in the Domain layer defined by [architecture/layers.md](../../architecture/layers.md). <!-- TODO: verify when stage-2 model code lands -->
+- `src/domain/tabulature/types.ts` — entity catalog: `Notebook`, `RibbonLine` (`TabLine` | `TextLine`), `Column`, `Note`, `ColumnText`; constants `FORMAT_VERSION`, `DEFAULT_TUNING`, `MIN_FRET`/`MAX_FRET`, `MAX_COLUMN_TEXTS`, `DEFAULT_DURATION`; value-error contract `ModelResult<T>`
+- `src/domain/tabulature/ids.ts` — deterministic `createIdGenerator()` with per-entity id prefixes (№19)
+- `src/domain/tabulature/model.ts` — factories (`createNotebook`, `createTabLine`, `createTextLine`), mutations (insert/edit/remove note, barline conversion, column insert/clear/delete, column texts) and `validateNotebook`
+- `src/domain/tabulature/fixtures.ts` — valid test notebooks (`emptyNotebookFixture`, `demoNotebookFixture`) built through public operations only
+- `src/domain/tabulature/__tests__/notebook-model.test.ts` — stage-2 unit tests (№34)
 
 ## Core Types
 
-None yet. <!-- TODO: verify when stage-2 model code lands -->
+From `src/domain/tabulature/types.ts` (stage 2):
+
+```ts
+Notebook   { version: FORMAT_VERSION (=1), id, name, albumId: EntityId|null, lines }
+RibbonLine = TabLine | TextLine            // discriminated by kind: 'tab' | 'text'
+TabLine    { kind: 'tab', id, columns, tuning: [28,33,38,43], texts }
+TextLine   { kind: 'text', id, text }
+Column     { id, kind: 'content' | 'barline', notes }
+Note       { id, stringIndex, fret: 0-24, duration: Duration }
+ColumnText { id, columnId, text }           // <= 3 per column (MAX_COLUMN_TEXTS)
+Duration = string; DEFAULT_DURATION = 'quarter'
+ModelResult<T> = { ok: true, value: T } | { ok: false, error: { code, message } }
+```
 
 ## Flow
 
@@ -43,7 +59,7 @@ Mutation happy path — stage 3 (EXECUTE) of the canonical pipeline in [architec
 3. On success the mutation is applied: every created entity receives a fresh stable `id` (№19); a fret edit reuses the note's existing `id` (№21).
 4. The new model state is handed onward to persistence and to the layout engine; the model itself emits no coordinates and performs no I/O (№14, №23).
 
-Steps 1–4 describe intended stage-2 behavior; no code exists yet. <!-- TODO: verify -->
+Steps 1–4 are implemented in `src/domain/tabulature/model.ts` and checked by `src/domain/tabulature/__tests__/notebook-model.test.ts` (№34).
 
 ## Invariants
 
@@ -63,19 +79,19 @@ Steps 1–4 describe intended stage-2 behavior; no code exists yet. <!-- TODO: v
 - Measure extent always follows barline positions only; the model always leaves duration sums unchecked (№18).
 - The model always stores musical data, never layout coordinates (№23).
 
-These invariants become checkable at roadmap stage 2, where model unit tests are an acceptance criterion (№34). <!-- TODO: verify -->
+These invariants are checked by `validateNotebook` and the stage-2 unit tests (№34).
 
 ## Configuration
 
-All parameters below describe intent; none is read from code yet. <!-- TODO: verify -->
+All parameters below are exported as constants from `src/domain/tabulature/types.ts` (stage 2).
 
 | Parameter | Default | Valid values | Source |
 | --------- | ------- | ------------ | ------ |
-| Notebook format `version` value | defined by the first JSON serializer (stage 2) | any version constant future migrations can dispatch on | (№22) |
-| String tuning | `[E1, A1, D2, G2]` as MIDI note numbers `[28, 33, 38, 43]` | any list of MIDI note numbers; v1 ships exactly 4 entries | (№2) |
-| Fret domain | — | integers 0–24 inclusive; 0 denotes the open string | (№3) |
-| Note `duration` | quarter | duration value; the value vocabulary is finalized with the post-MVP palette | (№4) |
-| Max texts per column | 3 | 0–3 column texts per column | (№6) |
+| Notebook format `version` value | `FORMAT_VERSION = 1` (`src/domain/tabulature/types.ts`) | any version constant future migrations can dispatch on | (№22) |
+| String tuning | `[E1, A1, D2, G2]` = `[28, 33, 38, 43]` (`DEFAULT_TUNING`) | any list of MIDI note numbers; v1 ships exactly 4 entries | (№2) |
+| Fret domain | `MIN_FRET`–`MAX_FRET` | integers 0–24 inclusive; 0 denotes the open string | (№3) |
+| Note `duration` | `'quarter'` (`DEFAULT_DURATION`) | any non-empty duration string; the vocabulary is finalized with the post-MVP palette | (№4) |
+| Max texts per column | 3 (`MAX_COLUMN_TEXTS`) | 0–3 column texts per column | (№6) |
 | `albumId` | unset (no album) until albums ship post-MVP | reference to an album | (№30) |
 
 ## Extension Points
