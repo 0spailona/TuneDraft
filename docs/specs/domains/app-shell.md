@@ -31,9 +31,11 @@ export type Dictionary = typeof ru;
 export type TranslationKey = keyof Dictionary;
 
 // src/i18n/index.ts
-export function t(key: TranslationKey): string;
-// Non-production builds throw on a key missing from the dictionary (a runtime
-// guard for dynamically-built keys that bypass the compile-time check).
+export declare function t(key: TranslationKey): string;
+// Ambient declaration for the spec: the real implementation lives in
+// src/i18n/index.ts. Non-production builds throw on a key missing from the
+// dictionary (a runtime guard for dynamically-built keys that bypass the
+// compile-time check).
 ```
 
 A misspelled key is a compile error (`TranslationKey` is a union of literal keys); components hold keys only, never string values. As a runtime backstop, `t()` throws in dev/test when a key is absent from the dictionary (dynamically assembled keys), instead of rendering an empty string. Screen/mode/navigation types (Library ↔ Editor state, Read/Edit mode, Back contract) land with their roadmap stages.
