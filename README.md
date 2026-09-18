@@ -42,6 +42,8 @@
 - `npm test` — юнит-тесты (jest-expo);
 - `npm start` — Expo dev-сервер.
 
+Тесты лежат рядом с кодом в каталогах `__tests__/` (например, `src/i18n/__tests__/i18n.test.ts`); в production-сборку они не попадают.
+
 ## Specifications
 
 Detailed system specs live in `docs/specs/`. Before making structural changes, read the relevant spec:
