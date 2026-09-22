@@ -1,13 +1,13 @@
 # Spec Index
 
-Navigation for TuneDraft's specification system. Project status: **scaffold landed** — roadmap stage 1 is complete: the Expo toolchain and the `src/` layer skeleton exist ([ADR-0003](decisions/0003-src-layer-directories.md)); domain features (model, layout, editing, storage, rendering) are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
+Navigation for TuneDraft's specification system. Project status: **model landed** — roadmap stages 1–2 are complete: the Expo toolchain, the `src/` layer skeleton ([ADR-0003](decisions/0003-src-layer-directories.md)) and the tabulature notebook model (`src/domain/tabulature/`, unit-tested per №34) exist; layout, editing, storage, and rendering are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
 
 ## Task → Spec
 
 | Task | Read first | Then |
 | --- | --- | --- |
 | Add code to the `src/` layer skeleton (roadmap stages 2–10; stage 1 is done, see [ADR-0003](decisions/0003-src-layer-directories.md)) | [architecture/layers.md](architecture/layers.md) | [architecture/data-flow.md](architecture/data-flow.md), [WORKFLOW.md](WORKFLOW.md) §6 |
-| Implement the notebook data model (roadmap stage 2) | [domains/tabulature/README.md](domains/tabulature/README.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
+| Implement the notebook data model (roadmap stage 2 — **done**: `src/domain/tabulature/`) | [domains/tabulature/README.md](domains/tabulature/README.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
 | Implement the layout engine: geometry, column widths, wrap rules (stage 3) | [domains/layout-engine.md](domains/layout-engine.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md), [domains/rendering/README.md](domains/rendering/README.md) |
 | Implement the Skia screen renderer (stage 4) | [domains/rendering/README.md](domains/rendering/README.md) | [domains/layout-engine.md](domains/layout-engine.md), [architecture/layers.md](architecture/layers.md) |
 | Implement note input: cell/column menus, fret panel, undo/redo (stage 5) | [domains/editing/README.md](domains/editing/README.md) | [domains/editing/cell-and-column-menus.md](domains/editing/cell-and-column-menus.md), [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
@@ -26,7 +26,7 @@ Navigation for TuneDraft's specification system. Project status: **scaffold land
 
 ## Dependency Graph
 
-The runtime tree is the stage-1 scaffold (root `App.tsx`/`index.ts` + `src/` layer skeleton, [ADR-0003](decisions/0003-src-layer-directories.md)); no domain logic is implemented yet, so the runtime dependency graph is still trivial. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
+The runtime tree is the stage-1 scaffold (root `App.tsx`/`index.ts` + `src/` layer skeleton, [ADR-0003](decisions/0003-src-layer-directories.md)) plus the stage-2 tabulature model (`src/domain/tabulature/`), which imports nothing outside its own module — the runtime dependency graph is still trivial. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
 
 ```
                 ┌─────────────────────────────────┐

@@ -20,8 +20,8 @@ describe('i18n словарь (smoke)', () => {
     // Русский — базовый язык (№31): в базовом словаре обязаны быть
     // строки с кириллицей. Проверяем, что такие ключи вообще есть,
     // и что t() по каждому из них возвращает строку с кириллицей.
-    const cyrillicKeys = (Object.keys(ru) as TranslationKey[]).filter(
-      (key) => /[А-ЯЁа-яё]/.test(ru[key]),
+    const cyrillicKeys = (Object.keys(ru) as TranslationKey[]).filter((key) =>
+      /[А-ЯЁа-яё]/.test(ru[key]),
     );
     expect(cyrillicKeys.length).toBeGreaterThan(0);
     for (const key of cyrillicKeys) {

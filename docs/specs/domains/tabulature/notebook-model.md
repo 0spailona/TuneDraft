@@ -1,6 +1,6 @@
 # Notebook Model
 
-> **Bootstrap spec.** This component is specified before any code exists (see [ADR-0001](../../decisions/0001-bootstrap-spec-system-before-code.md)). Claims about code that does not exist yet carry a `<!-- TODO: verify -->` marker. Citations of the form (№NN) refer to the numbered decisions table in `docs/КАРТА-ПРОЕКТА.md`.
+> **Model landed (roadmap stage 2).** This component is implemented in `src/domain/tabulature/` (layer layout per [ADR-0003](../../decisions/0003-src-layer-directories.md)). Remaining `TODO: verify` markers refer to later stages. Citations of the form (№NN) refer to the numbered decisions table in `docs/КАРТА-ПРОЕКТА.md`.
 
 ## Role
 
@@ -8,7 +8,13 @@ The notebook model is the concrete entity catalog of the tabulature domain: the 
 
 ## Key Files
 
-None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). Roadmap stage 2 (КАРТА §3) implements these entities as pure TypeScript in the Domain layer defined by [architecture/layers.md](../../architecture/layers.md); persistence as JSON is stage-4 infrastructure (№29). <!-- TODO: verify when stage-2 model code lands -->
+- `src/domain/tabulature/types.ts` — the entity catalog below as interfaces plus constants and the `ModelResult<T>` error-as-value contract
+- `src/domain/tabulature/model.ts` — factories (id generator passed explicitly, R6), mutations, cascade rules and `validateNotebook`
+- `src/domain/tabulature/ids.ts` — deterministic id factory (№19)
+- `src/domain/tabulature/fixtures.ts` — valid test notebooks built through public operations
+- `src/domain/tabulature/__tests__/notebook-model.test.ts` — unit tests of the validation summary (№34)
+
+Persistence as JSON is stage-7 infrastructure (№29).
 
 ## Behavior
 
@@ -16,7 +22,7 @@ None yet — this domain's code is not implemented yet (the stage-1 scaffold, [A
 
 | Entity | Fields (v1 intent) | Notes |
 | ------ | ------------------ | ----- |
-| Notebook | `version` (№22), `name` (№29), `albumId` (№30), ribbon of lines | Root aggregate; serialized as one JSON document `tet-<id>.json` (№29). Every field listed ships from day one. |
+| Notebook | `version` (№22), `id` (№29), `name` (№29), `albumId` (№30), ribbon of lines | Root aggregate; serialized as one JSON document `tet-<id>.json` named by its stable `id` (№29). Every field listed ships from day one. |
 | TabLine | ordered columns, strings (as MIDI note list, №2) | A tab system: the grid of strings × columns (№20). |
 | TextLine | multiline text content | Standalone ribbon line; unlimited count; never attached to notes or columns (№6). |
 | Column | stable `id` (№19); state: content or barline (№18) | Unites the cells of all strings; carries simultaneously played notes (№20). |
@@ -25,7 +31,7 @@ None yet — this domain's code is not implemented yet (the stage-1 scaffold, [A
 | ColumnText | stable `id` (№19), `columnId` (№19), text content | Attached to a column by `columnId`; max 3 per column (№6). |
 | Cell | (derived: a string × column intersection; no own `id`) | An empty cell is a rest — a rest entity in its own right, distinct from a deleted column (№20). |
 
-The table describes intended field sets; no entity code exists yet. <!-- TODO: verify -->
+The table matches `src/domain/tabulature/types.ts` (verified at stage 2); lines carry a `kind: 'tab' | 'text'` discriminator. JSON serialization itself is stage 7.
 
 ### Column state machine
 
@@ -81,18 +87,37 @@ Notebook ──contains──▶ TabLine ──contains──▶ Column ──co
 | Constraint | Rule | Source |
 | ---------- | ---- | ------ |
 | Fret range | `fret` is an integer in 0–24 | (№3) |
+| Tuning entries | `tuning` is a non-empty list of integers (MIDI note numbers) | (№2) |
 | One note per string per column | at most one note per (column, string) | (№20) |
 | Column text limit | at most 3 texts attached to one column | (№6) |
 | Barline purity | a barline column holds no notes and no texts | (№18) |
-| Barline insertion precondition | barline conversion applies only to a note-free column | (№18) |
+| Barline insertion precondition | barline conversion applies only to a column free of notes and texts | (№18) |
 | Note edit identity | a fret edit preserves the note's `id` | (№21) |
 | Duration presence | every note carries a `duration`; default quarter | (№4) |
 
-This validation summary is the intended contract of stage-2 model unit tests (№34). <!-- TODO: verify -->
+This validation summary is the contract of `src/domain/tabulature/__tests__/notebook-model.test.ts` (№34) and of `validateNotebook` in `src/domain/tabulature/model.ts`.
 
 ## Error Handling
 
-The model layer returns violations as values; it never throws across boundaries as control flow — the EXECUTE-stage convention of [architecture/data-flow.md](../../architecture/data-flow.md). <!-- TODO: verify -->
+The model layer returns violations as values; it never throws across boundaries as control flow — the EXECUTE-stage convention of [architecture/data-flow.md](../../architecture/data-flow.md). Implemented as the `ModelResult<T>` union in `src/domain/tabulature/types.ts`.
+
+Each operation's refusal carries its own `ModelErrorCode`: the UI maps a code to a message without knowing which operation produced it, so two operations never share one code with opposite meanings. The full catalog (from `types.ts`, stage 2):
+
+| Code | Returned by |
+| ---- | ----------- |
+| `fret-out-of-range` | `insertNote`, `editNoteFret` — fret not an integer in 0–24 (№3) |
+| `string-index-out-of-range` | `insertNote` — string not an integer or outside the tuning (№2, №20) |
+| `line-not-found` | any operation addressed by `lineId` — no such line, or the line is not a tab line |
+| `column-not-found` | any column-addressed operation — no such column in the tab line |
+| `note-not-found` | `editNoteFret`, `removeNote` — the cell holds no note (№20) |
+| `text-not-found` | `editColumnText`, `removeColumnText` — no such column text |
+| `cell-not-empty` | `insertNote` — one note per string per column (№20) |
+| `column-is-barline` | `insertNote`, `editNoteFret`, `addColumnText` — the target column is a barline (№18) |
+| `barline-already-set` | `setBarline` — the column already is a barline (№18) |
+| `barline-not-set` | `clearBarline` — the column is not a barline (№18) |
+| `barline-column-not-empty` | `setBarline` — the column holds notes or texts (№18) |
+| `column-text-limit` | `addColumnText` — 4th text on a column (№6) |
+| `invalid-notebook` | `validateNotebook` — aggregate violations list (№34) |
 
 | Violation | Intended model response |
 | --------- | ---------------------- |

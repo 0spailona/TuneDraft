@@ -19,6 +19,8 @@ None yet — this domain's code is not implemented yet (the stage-1 scaffold, [A
 
 None yet. <!-- TODO: verify when storage code lands; expected: notebook JSON file I/O, pocket read/write, library listing/model -->
 
+The deserialization boundary (stage 7) never feeds raw parsed JSON straight into domain operations: `JSON.parse` output is typed `unknown`, wrapped in `try/catch` (a parse error yields the «повреждена» card state, №30), and only after structural checks reach `validateNotebook` — which itself reports malformed arrays (`columns`, `notes`, `texts`, `lines`) as `invalid-notebook` values instead of throwing. <!-- TODO: verify when stage-7 storage code lands -->
+
 ## Flow
 
 Primary happy path — edit, save, restart (№26, №29, №30). <!-- TODO: verify once implemented -->

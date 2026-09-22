@@ -5,11 +5,12 @@
 **TuneDraft** — Android-приложение: табулатурная тетрадь для бас-гитариста
 (4 струны E–A–D–G, лады 0–24, экспорт в PDF A4 портрет).
 
-**Текущее состояние: каркас этапа 1.** В репозитории есть первый код — Expo-каркас
-(TypeScript) и скелет слоёв `src/` ([ADR-0003](docs/specs/decisions/0003-src-layer-directories.md)):
-entry-файлы в корне (`index.ts`, `App.tsx`), слои `src/domain/`, `src/application/`,
-`src/infrastructure/` (пока README с правилами слоёв) и словарь строк `src/i18n/` (№31).
-Доменные фичи (модель, layout, ввод, хранение, рендер) ещё не реализованы — их этапы 2–8.
+**Текущее состояние: этап 2 завершён.** В репозитории: Expo-каркас (TypeScript) и слои
+`src/` ([ADR-0003](docs/specs/decisions/0003-src-layer-directories.md)) — entry-файлы в корне
+(`index.ts`, `App.tsx`), словарь строк `src/i18n/` (№31) и модель данных тетради
+`src/domain/tabulature/` (типы, иммутабельные мутации с ошибками-значениями, детерминированные
+id, фикстуры; юнит-тесты №34 зелёные). `src/application/` и `src/infrastructure/` —
+пока README с правилами слоёв. Layout, ввод, хранение, рендер — этапы 3–8.
 Новый код обязан ложиться в уже зафиксированную дисциплину (слои, спеки, ADR).
 
 ## Карта документации (читать перед действием)
@@ -34,8 +35,19 @@ entry-файлы в корне (`index.ts`, `App.tsx`), слои `src/domain/`, 
 
 Сборка — локальный `.apk`: `npx expo run:android` или `eas build --platform android --local` (№13).
 Команды каркаса: `npm run typecheck` (tsc --noEmit), `npm test` (jest-expo, №34),
-`npm start` (Expo dev-сервер). Для `expo run:android` нужны JDK 17 и Android SDK
+`npm run lint` (ESLint: recommended + typescript-eslint + guard-правила слоёв —
+`src/domain/` без фреймворков/UI/тестовых импортов (R1), `src/application/` без
+фреймворков, entry-файлов и прямых импортов `infrastructure` (R2, превентивно),
+`src/infrastructure/` без entry-файлов (R4-симметрия, превентивно)),
+`npm run format` / `npm run format:check` (prettier; markdown и `docs/` исключены —
+спеки форматируются вручную), `npm start` (Expo dev-сервер). Для `expo run:android` нужны JDK 17 и Android SDK
 (`ANDROID_HOME`/`ANDROID_SDK_ROOT` → `~/Android/Sdk`); минимальный Android — API 24 (№23).
+
+Политика версий пакетов: в `package.json` — диапазоны (`^`/`~`), фактические версии
+фиксирует закоммиченный `package-lock.json` (воспроизводимая установка — `npm ci`).
+Runtime-зависимости (`expo`, `react`, `react-native` и связанные) ведутся по версиям
+Expo SDK; tooling (eslint/prettier/typescript-eslint) обновляется осознанно:
+`npm outdated` → обновление → прогон `npm run lint && npm test`.
 
 ## Ключевой архитектурный принцип (№14)
 
