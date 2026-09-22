@@ -3,7 +3,7 @@
 // of stage-2 model unit tests». Конвенции: ошибки — значения (не throw),
 // id стабильны и уникальны (№19), мутации иммутабельны.
 
-import type { Column, ModelResult, Notebook, TabLine } from '../types';
+import type { Column, ModelErrorCode, ModelResult, Notebook, TabLine } from '../types';
 import { DEFAULT_DURATION, FORMAT_VERSION, MAX_COLUMN_TEXTS } from '../types';
 import { createIdGenerator } from '../ids';
 import {
@@ -35,13 +35,16 @@ function must<T>(result: ModelResult<T>): T {
   return result.value;
 }
 
-function expectOk<T>(result: { ok: boolean; error?: unknown }): asserts result is { ok: true; value: T } {
+function expectOk<T>(result: {
+  ok: boolean;
+  error?: unknown;
+}): asserts result is { ok: true; value: T } {
   if (!result.ok) {
     throw new Error(`ожидали ok, получили отказ: ${JSON.stringify(result.error)}`);
   }
 }
 
-function expectErr(result: ModelResult<unknown>, code: string): void {
+function expectErr(result: ModelResult<unknown>, code: ModelErrorCode): void {
   expect(result.ok).toBe(false);
   if (!result.ok) {
     expect(result.error.code).toBe(code);
@@ -81,9 +84,7 @@ describe('фикстуры (этап 2: тест-данные валидны)', 
     const tabLines = nb.lines.filter((l): l is TabLine => l.kind === 'tab');
     const barlines = tabLines.flatMap((l) => l.columns.filter((c) => c.kind === 'barline'));
     expect(barlines.length).toBeGreaterThanOrEqual(2);
-    const chord = tabLines[0].columns.find(
-      (c) => c.notes.length >= 2,
-    ) as Column;
+    const chord = tabLines[0].columns.find((c) => c.notes.length >= 2) as Column;
     expect(chord.notes.length).toBe(2);
     const texts = tabLines[0].texts.filter((t) => t.columnId === chord.id);
     expect(texts.length).toBe(2);
@@ -95,7 +96,7 @@ describe('фикстуры (этап 2: тест-данные валидны)', 
 
 describe('корневые поля тетради (№22, №29, №30)', () => {
   it('createNotebook ставит version, id, name, albumId=null и пустую ленту', () => {
-    const nb = createNotebook('Моя тетрадь');
+    const nb = createNotebook('Моя тетрадь', createIdGenerator());
     expect(nb.version).toBe(FORMAT_VERSION);
     expect(nb.id).toMatch(/^nb-/);
     expect(nb.name).toBe('Моя тетрадь');
@@ -104,7 +105,7 @@ describe('корневые поля тетради (№22, №29, №30)', () =>
   });
 
   it('createTabLine: колонки пустые, контентные, строй E1 A1 D2 G2', () => {
-    const line = createTabLine(3);
+    const line = createTabLine(3, createIdGenerator());
     expect(line.kind).toBe('tab');
     expect(line.tuning).toEqual([28, 33, 38, 43]);
     expect(line.columns).toHaveLength(3);
@@ -150,8 +151,18 @@ describe('вставка и правка нот', () => {
   it('граничные лады 0 и 24 допустимы (№3)', () => {
     const { nb, line } = baseNotebook();
     const gen = createIdGenerator();
-    const a = insertNote(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }, 0, gen);
-    const b = insertNote(nb, { lineId: line.id, columnId: columnId(line, 1), stringIndex: 0 }, 24, gen);
+    const a = insertNote(
+      nb,
+      { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 },
+      0,
+      gen,
+    );
+    const b = insertNote(
+      nb,
+      { lineId: line.id, columnId: columnId(line, 1), stringIndex: 0 },
+      24,
+      gen,
+    );
     expectOk(a);
     expectOk(b);
   });
@@ -160,7 +171,12 @@ describe('вставка и правка нот', () => {
     const { nb, line } = baseNotebook();
     const gen = createIdGenerator();
     for (const bad of [-1, 25, 3.5, NaN]) {
-      const res = insertNote(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }, bad, gen);
+      const res = insertNote(
+        nb,
+        { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 },
+        bad,
+        gen,
+      );
       expectErr(res, 'fret-out-of-range');
     }
   });
@@ -185,6 +201,19 @@ describe('вставка и правка нот', () => {
   it('струна вне строя — отказ string-index-out-of-range', () => {
     const { nb, line } = baseNotebook();
     for (const bad of [-1, 4, 100]) {
+      const res = insertNote(
+        nb,
+        { lineId: line.id, columnId: columnId(line, 0), stringIndex: bad },
+        1,
+        createIdGenerator(),
+      );
+      expectErr(res, 'string-index-out-of-range');
+    }
+  });
+
+  it('дробная струна — отказ string-index-out-of-range (как вне строя)', () => {
+    const { nb, line } = baseNotebook();
+    for (const bad of [0.5, 2.5]) {
       const res = insertNote(
         nb,
         { lineId: line.id, columnId: columnId(line, 0), stringIndex: bad },
@@ -231,7 +260,7 @@ describe('вставка и правка нот', () => {
     expectOk(withNote);
     const removed = removeNote(withNote.value, target);
     expectOk(removed);
-    const col = ((removed.value.lines[0] as TabLine).columns[0] as Column);
+    const col = (removed.value.lines[0] as TabLine).columns[0] as Column;
     expect(col.notes).toHaveLength(0);
     expect(removed.value.lines[0].id).toBe(line.id);
     expect((removed.value.lines[0] as TabLine).columns).toHaveLength(4);
@@ -256,7 +285,7 @@ describe('тактовые черты', () => {
     expectOk(res);
     const col = (res.value.lines[0] as TabLine).columns[1];
     expect(col.kind).toBe('barline');
-    expectErr(setBarline(res.value, line.id, columnId(line, 1)), 'column-is-not-barline');
+    expectErr(setBarline(res.value, line.id, columnId(line, 1)), 'barline-already-set');
   });
 
   it('setBarline на колонку с нотами — отказ (№18)', () => {
@@ -293,33 +322,73 @@ describe('тактовые черты', () => {
     expect(col.notes).toEqual([]);
   });
 
-  it('clearBarline на контентной колонке — отказ column-is-barline', () => {
+  it('clearBarline на контентной колонке — отказ barline-not-set', () => {
     const { nb, line } = baseNotebook();
-    expectErr(clearBarline(nb, line.id, columnId(line, 0)), 'column-is-barline');
+    expectErr(clearBarline(nb, line.id, columnId(line, 0)), 'barline-not-set');
   });
 });
 
 // ─── Колонки (№35) и каскад (№19) ───────────────────────────────────────────
 
 describe('операции с колонками', () => {
-  it('insertColumn слева/справа: пустая контентная колонка в нужном месте', () => {
+  it('insertColumn слева/справа от средней колонки: новая колонка точно между соседями', () => {
     const { nb, line } = baseNotebook();
-    const gen = createIdGenerator();
-    const left = insertColumn(nb, line.id, columnId(line, 1), 'left', gen);
+
+    // Слева от col1: новая колонка на позиции 1, между col0 и col1.
+    const left = insertColumn(nb, line.id, columnId(line, 1), 'left', createIdGenerator());
     expectOk(left);
     const colsL = (left.value.lines[0] as TabLine).columns;
     expect(colsL).toHaveLength(5);
     expect(colsL[1].kind).toBe('content');
     expect(colsL[1].notes).toEqual([]);
+    expect(colsL[0].id).toBe(columnId(line, 0)); // левый сосед не сдвинулся
+    expect(colsL[2].id).toBe(columnId(line, 1)); // цель ушла вправо
+    expect(colsL[1].id).not.toBe(columnId(line, 0));
     expect(colsL[1].id).not.toBe(columnId(line, 1));
-    expect(colsL[2].id).toBe(columnId(line, 1)); // исходная колонка сместилась вправо
+    // Исходные колонки сохранены и в исходном порядке.
+    expect(colsL.map((c) => c.id).filter((id) => id !== colsL[1].id)).toEqual(
+      line.columns.map((c) => c.id),
+    );
 
-    const right = insertColumn(left.value, line.id, columnId(line, 0), 'right', gen);
+    // Справа от col1 (независимый сценарий от той же базы): новая на позиции 2.
+    // Свежий генератор на каждый вызов: id новой колонки уникален среди
+    // выданных ранее (база заняла c-2..c-5) и не зависит от порядка
+    // сценариев left/right (№19).
+    const right = insertColumn(nb, line.id, columnId(line, 1), 'right', createIdGenerator());
     expectOk(right);
     const colsR = (right.value.lines[0] as TabLine).columns;
-    expect(colsR).toHaveLength(6);
-    expect(colsR[1].kind).toBe('content');
-    expect(colsR[0].id).toBe(columnId(line, 0));
+    expect(colsR).toHaveLength(5);
+    expect(colsR[2].kind).toBe('content');
+    expect(colsR[2].notes).toEqual([]);
+    expect(colsR[1].id).toBe(columnId(line, 1)); // цель осталась на месте
+    expect(colsR[3].id).toBe(columnId(line, 2)); // правый сосед сместился
+    expect(colsR[2].id).not.toBe(columnId(line, 1));
+    expect(colsR[2].id).not.toBe(columnId(line, 2));
+    expect(colsR.map((c) => c.id).filter((id) => id !== colsR[2].id)).toEqual(
+      line.columns.map((c) => c.id),
+    );
+  });
+
+  it('insertColumn слева от первой колонки: новая в начале ленты колонок', () => {
+    const { nb, line } = baseNotebook();
+    const leftmost = insertColumn(nb, line.id, columnId(line, 0), 'left', createIdGenerator());
+    expectOk(leftmost);
+    const cols = (leftmost.value.lines[0] as TabLine).columns;
+    expect(cols).toHaveLength(5);
+    expect(cols[0].id).not.toBe(columnId(line, 0));
+    expect(cols[1].id).toBe(columnId(line, 0));
+    expect(cols[4].id).toBe(columnId(line, 3));
+  });
+
+  it('insertColumn справа от последней колонки: новая в конце', () => {
+    const { nb, line } = baseNotebook();
+    const rightmost = insertColumn(nb, line.id, columnId(line, 3), 'right', createIdGenerator());
+    expectOk(rightmost);
+    const cols = (rightmost.value.lines[0] as TabLine).columns;
+    expect(cols).toHaveLength(5);
+    expect(cols[4].id).not.toBe(columnId(line, 3));
+    expect(cols[3].id).toBe(columnId(line, 3));
+    expect(cols[0].id).toBe(columnId(line, 0));
   });
 
   it('clearColumn удаляет ноты и тексты, колонка остаётся (№35)', () => {
@@ -426,6 +495,12 @@ describe('тексты колонки', () => {
       'column-is-barline',
     );
   });
+
+  it('правка/удаление несуществующего текста — отказ text-not-found', () => {
+    const { nb, line } = baseNotebook();
+    expectErr(editColumnText(nb, line.id, 't-nope', 'текст'), 'text-not-found');
+    expectErr(removeColumnText(nb, line.id, 't-nope'), 'text-not-found');
+  });
 });
 
 // ─── Валидация агрегата (сводка notebook-model.md) ─────────────────────────
@@ -469,133 +544,234 @@ describe('validateNotebook ловит нарушения инвариантов'
   });
 
   it('две ноты на одной струне в колонке (№20)', () => {
-    expectInvalid(
-      (nb) => {
-        const tab = firstTab(nb);
-        const col = tab.columns.find((c) => c.kind === 'content' && c.notes.length > 0) as Column;
-        const doubled: Column = {
-          ...col,
-          notes: [...col.notes, { ...col.notes[0], id: 'n-dup-string' }],
-        };
-        return {
-          ...nb,
-          lines: nb.lines.map((l) =>
-            l.kind === 'tab' && l.id === tab.id
-              ? { ...tab, columns: tab.columns.map((c) => (c.id === col.id ? doubled : c)) }
-              : l,
-          ),
-        };
-      },
-      'две ноты',
-    );
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      const col = tab.columns.find((c) => c.kind === 'content' && c.notes.length > 0) as Column;
+      const doubled: Column = {
+        ...col,
+        notes: [...col.notes, { ...col.notes[0], id: 'n-dup-string' }],
+      };
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? { ...tab, columns: tab.columns.map((c) => (c.id === col.id ? doubled : c)) }
+            : l,
+        ),
+      };
+    }, 'две ноты');
   });
 
   it('4-й текст колонки (№6)', () => {
-    expectInvalid(
-      (nb) => {
-        const tab = firstTab(nb);
-        const victim = tab.columns.find(
-          (c) => tab.texts.filter((t) => t.columnId === c.id).length === 2,
-        );
-        if (!victim) throw new Error('в демо-фикстуре нет колонки с 2 текстами');
-        // У колонки уже 2 текста; добавляем ещё 2 → 4-й нарушает лимит (№6).
-        const extra = [
-          { id: 't-extra-3', columnId: victim.id, text: 'третий' },
-          { id: 't-extra-4', columnId: victim.id, text: 'четвёртый' },
-        ];
-        return {
-          ...nb,
-          lines: nb.lines.map((l) =>
-            l.kind === 'tab' && l.id === tab.id ? { ...tab, texts: [...tab.texts, ...extra] } : l,
-          ),
-        };
-      },
-      'текстов',
-    );
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      const victim = tab.columns.find(
+        (c) => tab.texts.filter((t) => t.columnId === c.id).length === 2,
+      );
+      if (!victim) throw new Error('в демо-фикстуре нет колонки с 2 текстами');
+      // У колонки уже 2 текста; добавляем ещё 2 → 4-й нарушает лимит (№6).
+      const extra = [
+        { id: 't-extra-3', columnId: victim.id, text: 'третий' },
+        { id: 't-extra-4', columnId: victim.id, text: 'четвёртый' },
+      ];
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id ? { ...tab, texts: [...tab.texts, ...extra] } : l,
+        ),
+      };
+    }, 'текстов');
   });
 
   it('columnId указывает на несуществующую колонку (№19)', () => {
-    expectInvalid(
-      (nb) => {
-        const tab = firstTab(nb);
-        const orphan = { id: 't-orphan', columnId: 'c-nope', text: 'висящий' };
-        return {
-          ...nb,
-          lines: nb.lines.map((l) =>
-            l.kind === 'tab' && l.id === tab.id ? { ...tab, texts: [...tab.texts, orphan] } : l,
-          ),
-        };
-      },
-      'не существует',
-    );
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      const orphan = { id: 't-orphan', columnId: 'c-nope', text: 'висящий' };
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id ? { ...tab, texts: [...tab.texts, orphan] } : l,
+        ),
+      };
+    }, 'не существует');
+  });
+
+  it('texts не массив — invalid-notebook, а не throw (этап 7: JSON извне)', () => {
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      // Моделируем битый JSON: line.texts — не массив.
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? ({ ...tab, texts: 'abc' } as unknown as TabLine)
+            : l,
+        ),
+      };
+    }, 'texts не массив');
+  });
+
+  it('notes не массив — invalid-notebook, а не throw (этап 7: JSON извне)', () => {
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      // Моделируем битый JSON: column.notes — не массив.
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? {
+                ...tab,
+                columns: tab.columns.map((c) => ({ ...c, notes: 'abc' }) as unknown as Column),
+              }
+            : l,
+        ),
+      };
+    }, 'notes не массив');
+  });
+
+  it('строй с нечисловым элементом — invalid-notebook (№2)', () => {
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      // Моделируем битый JSON: элементы строя — строки вместо MIDI-нот.
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? ({ ...tab, tuning: ['E', 'A', 'D', 'G'] } as unknown as TabLine)
+            : l,
+        ),
+      };
+    }, 'элемент не число');
+  });
+
+  /** Зеркало expectInvalid для битого JSON извне (этап 7): валидатор обязан
+   * вернуть invalid-notebook, а не бросить исключение на null-элементах. */
+  function expectInvalidNoThrow(mutation: Mutate, fragment: string): void {
+    const nb = mutation(demoNotebookFixture());
+    let res: ReturnType<typeof validateNotebook> | undefined;
+    expect(() => {
+      res = validateNotebook(nb);
+    }).not.toThrow();
+    expect(res).toBeDefined();
+    if (!res) return;
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.code).toBe('invalid-notebook');
+      expect(res.error.message).toContain(fragment);
+    }
+  }
+
+  it('null в lines — invalid-notebook, а не throw (этап 7: JSON извне)', () => {
+    expectInvalidNoThrow((nb) => {
+      // Моделируем битый JSON: элемент lines — null.
+      return { ...nb, lines: [...nb.lines, null] } as unknown as Notebook;
+    }, 'строка не объект');
+  });
+
+  it('null в columns — invalid-notebook, а не throw (этап 7: JSON извне)', () => {
+    expectInvalidNoThrow((nb) => {
+      const tab = firstTab(nb);
+      // Моделируем битый JSON: элемент columns — null.
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? ({ ...tab, columns: [...tab.columns, null] } as unknown as TabLine)
+            : l,
+        ),
+      };
+    }, 'колонка не объект');
+  });
+
+  it('null в notes — invalid-notebook, а не throw (этап 7: JSON извне)', () => {
+    expectInvalidNoThrow((nb) => {
+      const tab = firstTab(nb);
+      // Моделируем битый JSON: элемент notes — null (в каждой колонке таб-строки).
+      return {
+        ...nb,
+        lines: nb.lines.map((l) => {
+          if (l.kind !== 'tab' || l.id !== tab.id) return l;
+          return {
+            ...tab,
+            columns: tab.columns.map(
+              (c) => ({ ...c, notes: [...c.notes, null] }) as unknown as Column,
+            ),
+          };
+        }),
+      } as unknown as Notebook;
+    }, 'нота не объект');
+  });
+
+  it('null в texts — invalid-notebook, а не throw (этап 7: JSON извне)', () => {
+    expectInvalidNoThrow((nb) => {
+      const tab = firstTab(nb);
+      // Моделируем битый JSON: элемент texts — null.
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? ({ ...tab, texts: [...tab.texts, null] } as unknown as TabLine)
+            : l,
+        ),
+      };
+    }, 'текст колонки не объект');
   });
 
   it('нота без duration (№4)', () => {
-    expectInvalid(
-      (nb) => {
-        const tab = firstTab(nb);
-        return {
-          ...nb,
-          lines: nb.lines.map((l) => {
-            if (l.kind !== 'tab' || l.id !== tab.id) return l;
-            return {
-              ...tab,
-              columns: tab.columns.map((c) =>
-                c.notes.length > 0
-                  ? {
-                      ...c,
-                      notes: c.notes.map((n, j) =>
-                        j === 0 ? { ...n, duration: '' } : n,
-                      ),
-                    }
-                  : c,
-              ),
-            };
-          }),
-        };
-      },
-      'duration',
-    );
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      return {
+        ...nb,
+        lines: nb.lines.map((l) => {
+          if (l.kind !== 'tab' || l.id !== tab.id) return l;
+          return {
+            ...tab,
+            columns: tab.columns.map((c) =>
+              c.notes.length > 0
+                ? {
+                    ...c,
+                    notes: c.notes.map((n, j) => (j === 0 ? { ...n, duration: '' } : n)),
+                  }
+                : c,
+            ),
+          };
+        }),
+      };
+    }, 'duration');
   });
 
   it('дублирующийся id (№19)', () => {
-    expectInvalid(
-      (nb) => {
-        const tab = firstTab(nb);
-        return {
-          ...nb,
-          lines: nb.lines.map((l) =>
-            l.kind === 'tab' && l.id === tab.id
-              ? { ...tab, columns: [...tab.columns, { ...tab.columns[0] }] } // тот же id
-              : l,
-          ),
-        };
-      },
-      'дублируется',
-    );
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? { ...tab, columns: [...tab.columns, { ...tab.columns[0] }] } // тот же id
+            : l,
+        ),
+      };
+    }, 'дублируется');
   });
 
   it('черта с нотами (№18)', () => {
-    expectInvalid(
-      (nb) => {
-        const tab = firstTab(nb);
-        const barCol = tab.columns.find((c) => c.kind === 'barline');
-        if (!barCol) throw new Error('в демо-фикстуре нет черты');
-        const spoiled: Column = {
-          ...barCol,
-          notes: [{ id: 'n-in-bar', stringIndex: 0, fret: 1, duration: 'quarter' }],
-        };
-        return {
-          ...nb,
-          lines: nb.lines.map((l) =>
-            l.kind === 'tab' && l.id === tab.id
-              ? { ...tab, columns: tab.columns.map((c) => (c.id === barCol.id ? spoiled : c)) }
-              : l,
-          ),
-        };
-      },
-      'содержит ноты',
-    );
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      const barCol = tab.columns.find((c) => c.kind === 'barline');
+      if (!barCol) throw new Error('в демо-фикстуре нет черты');
+      const spoiled: Column = {
+        ...barCol,
+        notes: [{ id: 'n-in-bar', stringIndex: 0, fret: 1, duration: 'quarter' }],
+      };
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l.kind === 'tab' && l.id === tab.id
+            ? { ...tab, columns: tab.columns.map((c) => (c.id === barCol.id ? spoiled : c)) }
+            : l,
+        ),
+      };
+    }, 'содержит ноты');
   });
 });
 
@@ -605,12 +781,25 @@ describe('ошибки — значения, не исключения', () => {
   it('все операции возвращают {ok:false,error} вместо throw', () => {
     const { nb, line } = baseNotebook();
     const attempts: Array<{ run: () => unknown }> = [
-      { run: () => insertNote(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }, 99, createIdGenerator()) },
+      {
+        run: () =>
+          insertNote(
+            nb,
+            { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 },
+            99,
+            createIdGenerator(),
+          ),
+      },
       { run: () => setBarline(nb, 'nope', 'nope') },
       { run: () => deleteColumn(nb, line.id, 'nope') },
       { run: () => addColumnText(nb, 'nope', 'nope', 'x', createIdGenerator()) },
-      { run: () => editNoteFret(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }, 1) },
-      { run: () => removeNote(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }) },
+      {
+        run: () =>
+          editNoteFret(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }, 1),
+      },
+      {
+        run: () => removeNote(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }),
+      },
     ];
     for (const a of attempts) {
       expect(() => a.run()).not.toThrow();
@@ -622,7 +811,12 @@ describe('ошибки — значения, не исключения', () => {
   it('отказ ничего не мутирует: тетрадь до == тетрадь после', () => {
     const { nb, line } = baseNotebook();
     const gen = createIdGenerator();
-    const withNote = insertNote(nb, { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 }, 1, gen);
+    const withNote = insertNote(
+      nb,
+      { lineId: line.id, columnId: columnId(line, 0), stringIndex: 0 },
+      1,
+      gen,
+    );
     expectOk(withNote);
     const before = JSON.stringify(withNote.value);
     const refused = insertNote(

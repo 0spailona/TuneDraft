@@ -26,7 +26,7 @@ import {
   MAX_FRET,
   MIN_FRET,
 } from './types';
-import { createIdGenerator, type IdGenerator } from './ids';
+import { type IdGenerator } from './ids';
 
 // ─── Конструкторы результата ────────────────────────────────────────────────
 
@@ -38,16 +38,14 @@ function err(code: ModelError['code'], message: string): ModelErr {
   return { ok: false, error: { code, message } };
 }
 
-/** Генератор по умолчанию для фабрик; мутации требуют явный gen (R6). */
-export const defaultIds = createIdGenerator;
-
 // ─── Фабрики сущностей ──────────────────────────────────────────────────────
 
-/** Создаёт тетрадь: version (№22), стабильный id (№29), пустая лента (№6). */
-export function createNotebook(
-  name: string,
-  gen: IdGenerator = createIdGenerator(),
-): Notebook {
+/**
+ * Создаёт тетрадь: version (№22), стабильный id (№29), пустая лента (№6).
+ * Генератор id обязателен (R6): вызывающая сторона владеет счётчиком id —
+ * два вызова фабрик без gen дали бы дубли id (№19).
+ */
+export function createNotebook(name: string, gen: IdGenerator): Notebook {
   return {
     version: FORMAT_VERSION,
     id: gen('nb-'),
@@ -59,13 +57,12 @@ export function createNotebook(
 
 /**
  * Создаёт таб-строку из columnCount пустых контентных колонок (№20):
- * каждая ячейка — пауза. Ёмкость строки (сколько колонок влезает на экран)
- * считает вызывающая сторона — это layout/редактирование, не модель.
+ * каждая ячейка — пауза. Контракт: columnCount — целое ≥ 0; модель
+ * аргумент не валидирует (0 даёт строку без колонок). Ёмкость строки
+ * (сколько колонок влезает на экран) считает вызывающая сторона —
+ * это layout/редактирование, не модель.
  */
-export function createTabLine(
-  columnCount: number,
-  gen: IdGenerator = createIdGenerator(),
-): TabLine {
+export function createTabLine(columnCount: number, gen: IdGenerator): TabLine {
   const columns: Column[] = [];
   for (let i = 0; i < columnCount; i++) {
     columns.push({ id: gen('c-'), kind: 'content', notes: [] });
@@ -74,14 +71,17 @@ export function createTabLine(
 }
 
 /** Создаёт текст-строку (№6): многострочный текст, к нотам не привязан. */
-export function createTextLine(
-  text: string,
-  gen: IdGenerator = createIdGenerator(),
-): TextLine {
+export function createTextLine(text: string, gen: IdGenerator): TextLine {
   return { kind: 'text', id: gen('tx-'), text };
 }
 
-/** Добавляет строку в конец ленты (для фикстур; вставка по позиции — этап 6). */
+/**
+ * Добавляет строку в конец ленты — ТОЛЬКО для фикстур и тестов (без проверки
+ * вида строки и без контракта ModelResult; runtime-коду её не вызывать).
+ * Этап 6 (editing, №36) вводит контрактную insertLine(notebook, line,
+ * position): ModelResult<Notebook> — вставка/перемещение строк ленты только
+ * через неё; appendLine удаляется с этапа 6.
+ */
 export function appendLine(notebook: Notebook, line: RibbonLine): Notebook {
   return { ...notebook, lines: [...notebook.lines, line] };
 }
@@ -93,10 +93,7 @@ interface TabLineRef {
   index: number;
 }
 
-function findTabLine(
-  notebook: Notebook,
-  lineId: string,
-): ModelResult<TabLineRef> {
+function findTabLine(notebook: Notebook, lineId: string): ModelResult<TabLineRef> {
   const index = notebook.lines.findIndex((l) => l.id === lineId);
   if (index === -1) {
     return err('line-not-found', `строка «${lineId}» не найдена в ленте`);
@@ -115,11 +112,7 @@ interface ColumnRef {
   columnIndex: number;
 }
 
-function findColumn(
-  notebook: Notebook,
-  lineId: string,
-  columnId: string,
-): ModelResult<ColumnRef> {
+function findColumn(notebook: Notebook, lineId: string, columnId: string): ModelResult<ColumnRef> {
   const lineRes = findTabLine(notebook, lineId);
   if (!lineRes.ok) {
     return lineRes;
@@ -127,20 +120,13 @@ function findColumn(
   const { line, index: lineIndex } = lineRes.value;
   const columnIndex = line.columns.findIndex((c) => c.id === columnId);
   if (columnIndex === -1) {
-    return err(
-      'column-not-found',
-      `колонка «${columnId}» не найдена в таб-строке «${lineId}»`,
-    );
+    return err('column-not-found', `колонка «${columnId}» не найдена в таб-строке «${lineId}»`);
   }
   return ok({ line, lineIndex, column: line.columns[columnIndex], columnIndex });
 }
 
 /** Заменяет колонку на новую по индексу; возвращает обновлённую тетрадь. */
-function replaceColumn(
-  notebook: Notebook,
-  ref: ColumnRef,
-  column: Column,
-): Notebook {
+function replaceColumn(notebook: Notebook, ref: ColumnRef, column: Column): Notebook {
   const line: TabLine = {
     ...ref.line,
     columns: ref.line.columns.map((c, i) => (i === ref.columnIndex ? column : c)),
@@ -201,7 +187,11 @@ export function insertNote(
       `в колонку-черту «${target.columnId}» ноты не вставляются (№18)`,
     );
   }
-  if (target.stringIndex < 0 || target.stringIndex >= ref.line.tuning.length) {
+  if (
+    !Number.isInteger(target.stringIndex) ||
+    target.stringIndex < 0 ||
+    target.stringIndex >= ref.line.tuning.length
+  ) {
     return err(
       'string-index-out-of-range',
       `струна ${target.stringIndex} вне строя (${ref.line.tuning.length} струн)`,
@@ -269,10 +259,7 @@ export function editNoteFret(
  * Удаляет ноту: ячейка очищается и остаётся в сетке как пауза (№20, №21).
  * Колонка сохраняется. Отказ: ноты в ячейке нет.
  */
-export function removeNote(
-  notebook: Notebook,
-  target: NoteTarget,
-): ModelResult<Notebook> {
+export function removeNote(notebook: Notebook, target: NoteTarget): ModelResult<Notebook> {
   const refRes = findColumn(notebook, target.lineId, target.columnId);
   if (!refRes.ok) {
     return refRes;
@@ -311,7 +298,7 @@ export function setBarline(
   }
   const ref = refRes.value;
   if (ref.column.kind === 'barline') {
-    return err('column-is-not-barline', `колонка «${columnId}» уже черта (№18)`);
+    return err('barline-already-set', `колонка «${columnId}» уже черта (№18)`);
   }
   if (ref.column.notes.length > 0) {
     return err(
@@ -326,9 +313,7 @@ export function setBarline(
       `у колонки «${columnId}» ${textCount} текст(ов) — в черте текстов нет (№18)`,
     );
   }
-  return ok(
-    replaceColumn(notebook, ref, { id: ref.column.id, kind: 'barline', notes: [] }),
-  );
+  return ok(replaceColumn(notebook, ref, { id: ref.column.id, kind: 'barline', notes: [] }));
 }
 
 /**
@@ -346,11 +331,9 @@ export function clearBarline(
   }
   const ref = refRes.value;
   if (ref.column.kind !== 'barline') {
-    return err('column-is-barline', `колонка «${columnId}» не черта (№18)`);
+    return err('barline-not-set', `колонка «${columnId}» не черта (№18)`);
   }
-  return ok(
-    replaceColumn(notebook, ref, { id: ref.column.id, kind: 'content', notes: [] }),
-  );
+  return ok(replaceColumn(notebook, ref, { id: ref.column.id, kind: 'content', notes: [] }));
 }
 
 // ─── Колонки (№35) ──────────────────────────────────────────────────────────
@@ -396,9 +379,7 @@ export function clearColumn(
   }
   const line: TabLine = {
     ...ref.line,
-    columns: ref.line.columns.map((c, i) =>
-      i === ref.columnIndex ? { ...c, notes: [] } : c,
-    ),
+    columns: ref.line.columns.map((c, i) => (i === ref.columnIndex ? { ...c, notes: [] } : c)),
     texts: ref.line.texts.filter((t) => t.columnId !== columnId),
   };
   return ok(replaceLine(notebook, ref.lineIndex, line));
@@ -446,10 +427,7 @@ export function addColumnText(
   }
   const ref = refRes.value;
   if (ref.column.kind === 'barline') {
-    return err(
-      'column-is-barline',
-      `к колонке-черте «${columnId}» тексты не привязываются (№18)`,
-    );
+    return err('column-is-barline', `к колонке-черте «${columnId}» тексты не привязываются (№18)`);
   }
   const count = ref.line.texts.filter((t) => t.columnId === columnId).length;
   if (count >= MAX_COLUMN_TEXTS) {
@@ -481,7 +459,7 @@ export function editColumnText(
   const { line, index } = lineRes.value;
   const has = line.texts.some((t) => t.id === textId);
   if (!has) {
-    return err('note-not-found', `текст «${textId}» не найден в таб-строке «${lineId}»`);
+    return err('text-not-found', `текст «${textId}» не найден в таб-строке «${lineId}»`);
   }
   return ok(
     replaceLine(notebook, index, {
@@ -504,7 +482,7 @@ export function removeColumnText(
   const { line, index } = lineRes.value;
   const has = line.texts.some((t) => t.id === textId);
   if (!has) {
-    return err('note-not-found', `текст «${textId}» не найден в таб-строке «${lineId}»`);
+    return err('text-not-found', `текст «${textId}» не найден в таб-строке «${lineId}»`);
   }
   return ok(
     replaceLine(notebook, index, {
@@ -558,39 +536,53 @@ export function validateNotebook(notebook: Notebook): ModelResult<true> {
   }
 
   for (const line of notebook.lines) {
+    if (typeof line !== 'object' || line === null) {
+      violations.push('строка не объект (№6)');
+      continue;
+    }
     if (line.kind === 'tab') {
       // Таб-строка.
       checkId(line.id, 'таб-строка');
       if (!Array.isArray(line.tuning) || line.tuning.length === 0) {
         violations.push(`таб-строка «${line.id}»: строй пуст (№2)`);
+      } else if (!line.tuning.every((midi: number) => Number.isInteger(midi))) {
+        violations.push(`таб-строка «${line.id}»: строй — элемент не число (№2)`);
       }
       if (!Array.isArray(line.columns)) {
         violations.push(`таб-строка «${line.id}»: columns не массив (№20)`);
         continue;
       }
       for (const column of line.columns) {
+        if (typeof column !== 'object' || column === null) {
+          violations.push(`таб-строка «${line.id}»: колонка не объект (№20)`);
+          continue;
+        }
         checkId(column.id, 'колонка');
         if (column.kind !== 'content' && column.kind !== 'barline') {
           violations.push(`колонка «${column.id}»: вид не content/barline (№18)`);
           continue;
         }
-        const notes = Array.isArray(column.notes) ? column.notes : [];
+        if (!Array.isArray(column.notes)) {
+          violations.push(`колонка «${column.id}»: notes не массив (№20)`);
+          continue;
+        }
+        const notes = column.notes;
         const stringsSeen = new Set<number>();
         for (const note of notes) {
+          if (typeof note !== 'object' || note === null) {
+            violations.push(`колонка «${column.id}»: нота не объект (№20)`);
+            continue;
+          }
           checkId(note.id, 'нота');
           if (!Number.isInteger(note.fret) || note.fret < MIN_FRET || note.fret > MAX_FRET) {
             violations.push(`нота «${note.id}»: лад вне 0–${MAX_FRET} (№3)`);
           }
           if (stringsSeen.has(note.stringIndex)) {
-            violations.push(
-              `колонка «${column.id}»: две ноты на струне ${note.stringIndex} (№20)`,
-            );
+            violations.push(`колонка «${column.id}»: две ноты на струне ${note.stringIndex} (№20)`);
           }
           stringsSeen.add(note.stringIndex);
           if (note.stringIndex < 0 || note.stringIndex >= line.tuning.length) {
-            violations.push(
-              `нота «${note.id}»: струна вне строя (${note.stringIndex}, №20)`,
-            );
+            violations.push(`нота «${note.id}»: струна вне строя (${note.stringIndex}, №20)`);
           }
           if (typeof note.duration !== 'string' || note.duration === '') {
             violations.push(`нота «${note.id}»: нет duration (№4)`);
@@ -602,25 +594,32 @@ export function validateNotebook(notebook: Notebook): ModelResult<true> {
           }
         }
       }
-      const perColumn = new Map<string, number>();
-      for (const text of line.texts) {
-        checkId(text.id, 'текст колонки');
-        if (!line.columns.some((c: Column) => c.id === text.columnId)) {
-          violations.push(
-            `текст «${text.id}»: columnId «${text.columnId}» не существует (№19)`,
+      if (!Array.isArray(line.texts)) {
+        violations.push(`таб-строка «${line.id}»: texts не массив (№19)`);
+      } else {
+        const perColumn = new Map<string, number>();
+        for (const text of line.texts) {
+          if (typeof text !== 'object' || text === null) {
+            violations.push(`таб-строка «${line.id}»: текст колонки не объект (№19)`);
+            continue;
+          }
+          checkId(text.id, 'текст колонки');
+          const column = line.columns.find(
+            (c: unknown): c is Column =>
+              typeof c === 'object' && c !== null && (c as { id?: unknown }).id === text.columnId,
           );
-          continue;
-        }
-        const column = line.columns.find((c: Column) => c.id === text.columnId);
-        if (column.kind === 'barline') {
-          violations.push(`текст «${text.id}» привязан к черте «${column.id}» (№18)`);
-        }
-        const count = (perColumn.get(text.columnId) ?? 0) + 1;
-        perColumn.set(text.columnId, count);
-        if (count > MAX_COLUMN_TEXTS) {
-          violations.push(
-            `колонка «${text.columnId}»: больше ${MAX_COLUMN_TEXTS} текстов (№6)`,
-          );
+          if (!column) {
+            violations.push(`текст «${text.id}»: columnId «${text.columnId}» не существует (№19)`);
+            continue;
+          }
+          if (column.kind === 'barline') {
+            violations.push(`текст «${text.id}» привязан к черте «${column.id}» (№18)`);
+          }
+          const count = (perColumn.get(text.columnId) ?? 0) + 1;
+          perColumn.set(text.columnId, count);
+          if (count > MAX_COLUMN_TEXTS) {
+            violations.push(`колонка «${text.columnId}»: больше ${MAX_COLUMN_TEXTS} текстов (№6)`);
+          }
         }
       }
     } else if (line.kind === 'text') {
@@ -630,7 +629,9 @@ export function validateNotebook(notebook: Notebook): ModelResult<true> {
         violations.push(`текст-строка «${line.id}»: text не строка (№6)`);
       }
     } else {
-      violations.push(`строка «${String((line as { id?: string }).id)}»: неизвестный вид строки (№6)`);
+      violations.push(
+        `строка «${String((line as { id?: string }).id)}»: неизвестный вид строки (№6)`,
+      );
     }
   }
 

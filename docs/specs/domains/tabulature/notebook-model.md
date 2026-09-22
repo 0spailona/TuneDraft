@@ -9,7 +9,7 @@ The notebook model is the concrete entity catalog of the tabulature domain: the 
 ## Key Files
 
 - `src/domain/tabulature/types.ts` — the entity catalog below as interfaces plus constants and the `ModelResult<T>` error-as-value contract
-- `src/domain/tabulature/model.ts` — factories, mutations, cascade rules and `validateNotebook`
+- `src/domain/tabulature/model.ts` — factories (id generator passed explicitly, R6), mutations, cascade rules and `validateNotebook`
 - `src/domain/tabulature/ids.ts` — deterministic id factory (№19)
 - `src/domain/tabulature/fixtures.ts` — valid test notebooks built through public operations
 - `src/domain/tabulature/__tests__/notebook-model.test.ts` — unit tests of the validation summary (№34)
@@ -87,6 +87,7 @@ Notebook ──contains──▶ TabLine ──contains──▶ Column ──co
 | Constraint | Rule | Source |
 | ---------- | ---- | ------ |
 | Fret range | `fret` is an integer in 0–24 | (№3) |
+| Tuning entries | `tuning` is a non-empty list of integers (MIDI note numbers) | (№2) |
 | One note per string per column | at most one note per (column, string) | (№20) |
 | Column text limit | at most 3 texts attached to one column | (№6) |
 | Barline purity | a barline column holds no notes and no texts | (№18) |
@@ -99,6 +100,24 @@ This validation summary is the contract of `src/domain/tabulature/__tests__/note
 ## Error Handling
 
 The model layer returns violations as values; it never throws across boundaries as control flow — the EXECUTE-stage convention of [architecture/data-flow.md](../../architecture/data-flow.md). Implemented as the `ModelResult<T>` union in `src/domain/tabulature/types.ts`.
+
+Each operation's refusal carries its own `ModelErrorCode`: the UI maps a code to a message without knowing which operation produced it, so two operations never share one code with opposite meanings. The full catalog (from `types.ts`, stage 2):
+
+| Code | Returned by |
+| ---- | ----------- |
+| `fret-out-of-range` | `insertNote`, `editNoteFret` — fret not an integer in 0–24 (№3) |
+| `string-index-out-of-range` | `insertNote` — string not an integer or outside the tuning (№2, №20) |
+| `line-not-found` | any operation addressed by `lineId` — no such line, or the line is not a tab line |
+| `column-not-found` | any column-addressed operation — no such column in the tab line |
+| `note-not-found` | `editNoteFret`, `removeNote` — the cell holds no note (№20) |
+| `text-not-found` | `editColumnText`, `removeColumnText` — no such column text |
+| `cell-not-empty` | `insertNote` — one note per string per column (№20) |
+| `column-is-barline` | `insertNote`, `editNoteFret`, `addColumnText` — the target column is a barline (№18) |
+| `barline-already-set` | `setBarline` — the column already is a barline (№18) |
+| `barline-not-set` | `clearBarline` — the column is not a barline (№18) |
+| `barline-column-not-empty` | `setBarline` — the column holds notes or texts (№18) |
+| `column-text-limit` | `addColumnText` — 4th text on a column (№6) |
+| `invalid-notebook` | `validateNotebook` — aggregate violations list (№34) |
 
 | Violation | Intended model response |
 | --------- | ---------------------- |

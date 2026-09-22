@@ -44,6 +44,8 @@ A gesture is a finger movement the system recognizes as a command — as distinc
 
 Text-line content is entered in a modal window; the text may be multiline (№27). The new-notebook template (№38) lives in the storage domain. Insertion position: text lines are insertable anywhere in the ribbon — before the first and after the last tab line included (№6). <!-- TODO: verify the exact position-choosing UX for the «+» insert -->
 
+Row insertion at the model level always goes through `insertLine(notebook, line, position): ModelResult<Notebook>` — the value-error contract of [Notebook Model](../tabulature/notebook-model.md); the stage-2 fixtures-only `appendLine` is removed when stage 6 lands. <!-- TODO: verify when stage-6 editing code lands -->
+
 ### Row handles (№36)
 
 - The start of every tab line renders a **bass clef 𝄢** — traditional for bass guitar and the marker of a system's start; it doubles as the grab handle for drag and delete (№36).

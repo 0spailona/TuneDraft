@@ -118,16 +118,24 @@ export interface Notebook {
   readonly lines: readonly RibbonLine[];
 }
 
-/** Уникальный тег результата операции: ok или код нарушения инварианта. */
+/**
+ * Уникальный тег результата операции: ok или код нарушения инварианта.
+ * Коды, совпадающие текстуально, но возникшие в разных операциях, различаются
+ * отдельными именами (barline-already-set / barline-not-set, а не общий
+ * «column-is-barline» в двух смыслах): UI мапит код в сообщение, не зная,
+ * какая операция его вернула.
+ */
 export type ModelErrorCode =
   | 'fret-out-of-range'
   | 'string-index-out-of-range'
   | 'line-not-found'
   | 'column-not-found'
   | 'note-not-found'
+  | 'text-not-found'
   | 'cell-not-empty'
   | 'column-is-barline'
-  | 'column-is-not-barline'
+  | 'barline-already-set'
+  | 'barline-not-set'
   | 'barline-column-not-empty'
   | 'column-text-limit'
   | 'invalid-notebook';

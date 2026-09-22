@@ -64,7 +64,7 @@ Dependencies point **downward only**. A layer may import from layers below it in
 - **R3 ✓** — no Infrastructure code exists yet; vacuously satisfied.
 - **R4 ✓** — `index.ts` imports `expo` and `App` for registration only; `App.tsx` contains no business logic (stub screen reading one dictionary key).
 - **R5 ✓** — runtime files import nothing from `docs/specs/`; the tree is documentation only.
-- **R6 ✓** — every import in the tree (`expo`, `expo-status-bar`, `react-native`, `./App`, `./src/i18n`, `./ru`, `./types`, `./ids`) is explicit; no ambient access or service-locator lookup exists; the id generator is passed into mutations explicitly.
+- **R6 ✓** — every import in the tree (`expo`, `expo-status-bar`, `react-native`, `./App`, `./src/i18n`, `./ru`, `./types`, `./ids`) is explicit; no ambient access or service-locator lookup exists; the id generator is passed explicitly into every factory and mutation (no default generator exists).
 
 Re-run this audit whenever a new module lands inside `src/` and update the bullet list here.
 
@@ -74,7 +74,9 @@ Re-run this audit whenever a new module lands inside `src/` and update the bulle
 - Domain code always compiles without infrastructure or framework dependencies.
 - Infrastructure capabilities always reach Application code through interfaces defined on the consuming side.
 - Entry points always stay free of business logic.
-- Every rule in this document corresponds to a checkable import pattern (enforced by review, or by a lint/tool once one is adopted).
+- Every rule in this document corresponds to a checkable import pattern (R1 and the R2/R4
+  counterparts are enforced by ESLint `no-restricted-imports` guards in `eslint.config.mjs`;
+  R5 and R6 are enforced by review and the audit note above).
 
 ## Anti-Patterns
 

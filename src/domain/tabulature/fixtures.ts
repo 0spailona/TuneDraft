@@ -33,7 +33,7 @@ function must<T>(result: ModelResult<T>): T {
  * пустая лента. Минимальный валидный агрегат.
  */
 export function emptyNotebookFixture(): Notebook {
-  return createNotebook('Пустая тетрадь');
+  return createNotebook('Пустая тетрадь', createIdGenerator());
 }
 
 /**

@@ -10,7 +10,7 @@ The `tabulature` domain is the pure data model of a TuneDraft notebook: the enti
 
 - `src/domain/tabulature/types.ts` — entity catalog: `Notebook`, `RibbonLine` (`TabLine` | `TextLine`), `Column`, `Note`, `ColumnText`; constants `FORMAT_VERSION`, `DEFAULT_TUNING`, `MIN_FRET`/`MAX_FRET`, `MAX_COLUMN_TEXTS`, `DEFAULT_DURATION`; value-error contract `ModelResult<T>`
 - `src/domain/tabulature/ids.ts` — deterministic `createIdGenerator()` with per-entity id prefixes (№19)
-- `src/domain/tabulature/model.ts` — factories (`createNotebook`, `createTabLine`, `createTextLine`), mutations (insert/edit/remove note, barline conversion, column insert/clear/delete, column texts) and `validateNotebook`
+- `src/domain/tabulature/model.ts` — factories (`createNotebook`, `createTabLine`, `createTextLine` — each takes the id generator explicitly, R6), mutations (insert/edit/remove note, barline conversion, column insert/clear/delete, column texts) and `validateNotebook`
 - `src/domain/tabulature/fixtures.ts` — valid test notebooks (`emptyNotebookFixture`, `demoNotebookFixture`) built through public operations only
 - `src/domain/tabulature/__tests__/notebook-model.test.ts` — stage-2 unit tests (№34)
 
