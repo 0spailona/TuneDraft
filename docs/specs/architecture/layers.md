@@ -1,6 +1,6 @@
 # Layers and Dependency Rules
 
-> **Scaffold landed.** The repository now contains the first code (roadmap stage 1: Expo scaffold + the `src/` layer skeleton, see [ADR-0003](../decisions/0003-src-layer-directories.md)). The layer model below is realized by the directories listed in Domain Mapping; layer rules R1–R6 are audited against that code (see the audit note under Dependency Rules). Remaining `TODO: verify` markers in this tree refer to features not yet implemented.
+> **Layers landed (roadmap stages 1–3).** The repository contains real code: the Expo scaffold + `src/` layer skeleton (stage 1, [ADR-0003](../decisions/0003-src-layer-directories.md)), the tabulature notebook model (stage 2), and the layout-engine kernel (stage 3, [ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md)). The layer model below is realized by the directories listed in Domain Mapping; layer rules R1–R6 are audited against that code (see the audit note under Dependency Rules). Remaining `TODO: verify` markers in this tree refer to features not yet implemented (stages 4–8).
 
 ## Context
 
@@ -41,7 +41,7 @@ The six specified domains map onto the canonical layers as follows. Since [ADR-0
 | Infrastructure | `src/infrastructure/` | [storage](../domains/storage/README.md) (JSON files, pocket, AsyncStorage); [rendering](../domains/rendering/README.md) (Skia canvas adapter, HTML→PDF export) | expo-file-system, AsyncStorage, expo-print / expo-sharing — all I/O and delivery |
 | Spec / Docs / Tooling | this tree (`docs/specs/`) | — | Governance only; never imported by runtime code (R5) |
 
-Current code state: the shipped modules are the root entry files, the i18n dictionary (`src/i18n/`), and — since roadmap stage 2 — the tabulature notebook model in `src/domain/tabulature/` (entities, mutations, fixtures, unit tests, №34). Layout-engine, editing, storage, and rendering code is pending their roadmap stages (3–8).
+Current code state: the shipped modules are the root entry files, the i18n dictionary (`src/i18n/`), the tabulature notebook model (stage 2: `src/domain/tabulature/` — entities, mutations, fixtures, unit tests, №34), and the layout engine (stage 3: `src/domain/layout-engine/` — `config.ts`, `types.ts`, `measure.ts`, `wrap.ts`, `emit.ts`, `index.ts`, `fixtures.ts`, unit and acceptance tests, [ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md)). Editing, storage, and rendering code is pending their roadmap stages (4–8).
 
 
 ## Dependency Rules
@@ -57,14 +57,14 @@ Dependencies point **downward only**. A layer may import from layers below it in
 | R5 | The `docs/specs/` tree is documentation; runtime code never imports or reads it at build time. |
 | R6 | Every dependency between two named modules is declared explicitly (no implicit ambient access, no service-locator lookup). |
 
-**R1–R6 audit against the shipped code (roadmap stages 1–2).** Audited against the entire current tree: `index.ts`, `App.tsx`, `src/domain/README.md`, `src/domain/tabulature/{types,ids,model,fixtures}.ts`, `src/domain/tabulature/__tests__/notebook-model.test.ts`, `src/application/README.md`, `src/infrastructure/README.md`, `src/i18n/{index.ts,ru.ts}` and `src/i18n/__tests__/i18n.test.ts` — the complete set of runtime files (other layer directories ship READMEs only).
+**R1–R6 audit against the shipped code (roadmap stages 1–3).** Audited against the entire current tree: `index.ts`, `App.tsx`, `src/domain/README.md`, `src/domain/tabulature/{types,ids,model,fixtures}.ts`, `src/domain/tabulature/__tests__/notebook-model.test.ts`, `src/domain/layout-engine/{config,types,measure,wrap,emit,index,fixtures}.ts`, `src/domain/layout-engine/__tests__/{measure,wrap,emit,layout-engine}.test.ts`, `src/application/README.md`, `src/infrastructure/README.md`, `src/i18n/{index.ts,ru.ts}` and `src/i18n/__tests__/i18n.test.ts` — the complete set of runtime files (other layer directories ship READMEs only).
 
-- **R1 ✓** — `src/domain/tabulature/*` imports only its own module files (`./types`, `./ids`); no I/O, framework, or infrastructure import exists in Domain.
+- **R1 ✓** — `src/domain/tabulature/*` imports only its own module files (`./types`, `./ids`, `./model`); `src/domain/layout-engine/*` imports only its own modules (`./config`, `./measure`, `./wrap`, `./emit`, `./types`) and the model's vocabulary (`../tabulature/types` — type-only imports of `EntityId`, `Column`; `../tabulature/ids` and `../tabulature/model` — fixture assembly only); no I/O, framework, or infrastructure import exists in Domain.
 - **R2 ✓** — no Application code exists yet; vacuously satisfied (nothing imports Infrastructure directly).
 - **R3 ✓** — no Infrastructure code exists yet; vacuously satisfied.
 - **R4 ✓** — `index.ts` imports `expo` and `App` for registration only; `App.tsx` contains no business logic (stub screen reading one dictionary key).
 - **R5 ✓** — runtime files import nothing from `docs/specs/`; the tree is documentation only.
-- **R6 ✓** — every import in the tree (`expo`, `expo-status-bar`, `react-native`, `./App`, `./src/i18n`, `./ru`, `./types`, `./ids`) is explicit; no ambient access or service-locator lookup exists; the id generator is passed explicitly into every factory and mutation (no default generator exists).
+- **R6 ✓** — every import in the tree (`expo`, `expo-status-bar`, `react-native`, `./App`, `./src/i18n`, `./ru`, `./types`, `./ids`, `./model`, `./config`, `./measure`, `./wrap`, `./emit`, `../tabulature/types`, `../tabulature/ids`, `../tabulature/model`) is explicit; no ambient access or service-locator lookup exists; the id generator is passed explicitly into every factory and mutation (no default generator exists).
 
 Re-run this audit whenever a new module lands inside `src/` and update the bullet list here.
 
