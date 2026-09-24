@@ -8,7 +8,7 @@ Specifications provide AI coding agents with deterministic context about system 
 
 ## Current Project State
 
-TuneDraft has passed the bootstrap threshold: **roadmap stages 1–2 are complete** — the repository contains the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)) plus the tabulature notebook model in `src/domain/tabulature/` (entities, mutations, fixtures; unit tests per №34). `src/application/` and `src/infrastructure/` still hold layer-rule READMEs only; layout, editing, storage, and rendering remain for stages 3–8.
+TuneDraft has passed the bootstrap threshold: **roadmap stages 1–3 are complete** — the repository contains the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model in `src/domain/tabulature/` (entities, mutations, fixtures; unit tests per №34), and the layout-engine kernel in `src/domain/layout-engine/` (width/capacity arithmetic and wrap rules, character-unit coordinates per [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md); unit tests per №34). `src/application/` and `src/infrastructure/` still hold layer-rule READMEs only; editing, storage, and rendering remain for stages 4–8.
 
 The spec system itself is complete: the six real domains of the intended system — `tabulature`, `layout-engine`, `editing`, `app-shell`, `storage`, `rendering` — are fully specified (see [INDEX.md](INDEX.md)), derived from the 40 numbered decisions of `docs/КАРТА-ПРОЕКТА.md` (referenced as `(№NN)`). The bootstrap exemplar `domains/placeholder-domain/` was deleted when these domains landed, per its own banner.
 
@@ -64,7 +64,9 @@ docs/specs/
 └── decisions/                      Architecture Decision Records
     ├── _template.md                ADR template
     ├── 0001-bootstrap-spec-system-before-code.md
-    └── 0002-specs-live-in-docs-specs.md
+    ├── 0002-specs-live-in-docs-specs.md
+    ├── 0003-src-layer-directories.md
+    └── 0004-layout-character-units-and-wrap-policy.md
 ```
 
 When the first real domain is identified: create `domains/<domain>/README.md`, update `INDEX.md`. (The bootstrap exemplar `domains/placeholder-domain/` was deleted when the six real domains landed.) When the first real boundary is identified: create `contracts/<layer-a>-<layer-b>.md` from `contracts/_template.md` and update `INDEX.md`.
