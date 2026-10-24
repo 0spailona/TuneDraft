@@ -1,6 +1,6 @@
 # Layout Engine
 
-> **Layout engine landed (roadmap stage 3).** The pure TypeScript geometry code lives in `src/domain/layout-engine/` (layer layout per [ADR-0003](../decisions/0003-src-layer-directories.md); the character-unit coordinate decision is recorded in [ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md)). Remaining `TODO: verify` markers in this tree refer to later stages (4–8). Citations of the form (№NN) refer to the numbered decisions table in `docs/КАРТА-ПРОЕКТА.md`.
+> **Layout engine landed (roadmap stage 3).** The pure TypeScript geometry code lives in `src/domain/layout-engine/` (layer layout per [ADR-0003](../decisions/0003-src-layer-directories.md); the character-unit coordinate decision is recorded in [ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md)). Remaining `TODO: verify` markers in this tree refer to later stages (5–8). Citations of the form (№NN) refer to the numbered decisions table in `docs/КАРТА-ПРОЕКТА.md`.
 
 ## Purpose
 
@@ -8,7 +8,7 @@ The layout engine is the single pure-JS geometry kernel of TuneDraft: it convert
 
 ## Key Files
 
-- `src/domain/layout-engine/config.ts` — geometric constants in character units (№32): `MIN_COLUMN_WIDTH_CHARS = 4`, `MAX_COLUMN_WIDTH_CHARS = 12`, `STRIP_WIDTH_FRACTION = 0.85`, and the provisional vertical metrics `ROW_SPACING_CHARS = 2`, `TEXT_ROW_SPACING_CHARS = 1` (finalized at stage 4)
+- `src/domain/layout-engine/config.ts` — geometric constants in character units (№32): `MIN_COLUMN_WIDTH_CHARS = 4`, `MAX_COLUMN_WIDTH_CHARS = 12`, `STRIP_WIDTH_FRACTION = 0.85`, and the final vertical metrics `ROW_SPACING_CHARS = 2`, `TEXT_ROW_SPACING_CHARS = 1` (finalized together with the hardcoded MVP theme, `src/infrastructure/rendering/theme.ts`)
 - `src/domain/layout-engine/types.ts` — the output vocabulary of a layout pass (see Core Types); imports only `EntityId` from the tabulature model (R1)
 - `src/domain/layout-engine/measure.ts` — the MEASURE pass (Flow step 1): `columnWidthChars(column, texts)` — 4…12 characters, barline columns always the minimum (№18) — and `systemCapacity(targetWidthChars)` — the strip/capacity floor arithmetic (№20)
 - `src/domain/layout-engine/wrap.ts` — the WRAP pass (Flow step 2): `wrapTabLine(columns, widths, capacity)` — trailing-empty shrink first, then measure-boundary wrap ([ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md))
@@ -24,7 +24,7 @@ NotebookLayout     { ribbon }                          // one full pass over the
 RibbonLayoutEntry = (TabLineLayout & { kind: 'tab' })
                   | (TextLineLayout & { kind: 'text' }) // mirrors the model's RibbonLine kind (№6)
 TabLineLayout     { lineId, stringCount, stringYChars, systems }
-                  // stringYChars[i] = i * ROW_SPACING_CHARS (provisional, №2, №32)
+                  // stringYChars[i] = i * ROW_SPACING_CHARS (final, №2, №32)
 LaidOutSystem     { index, columns, texts, widthChars }  // one system of a tab line (№18);
                   // widthChars = floor(target · STRIP_WIDTH_FRACTION) (№20)
 LaidOutColumn     { columnId, xChars, widthChars }       // №20
@@ -103,7 +103,7 @@ Overflow decision table for step 2 (order is significant — shrinking precedes 
 
 A wrap result always contains at least one system — even an empty tab line yields one empty system.
 
-Runtime happy paths (the consumers are stages 4–8; the wrap kernel they invoke is shipped):
+Runtime happy paths (the screen renderer is shipped — stage 4 consumes `layoutNotebook` directly; the editing and export consumers are stages 5–8):
 
 1. **After every mutation** the editing domain hands the new model to the engine; the engine re-runs the pass above at the current screen width and the shell re-renders from the fresh output (№14, №20).
 2. **On rotation** the shell re-runs the same pass at the new width: landscape fits more columns per system. The model stores data, not coordinates, so re-flow costs a recomputation and nothing else (№23).
@@ -135,8 +135,8 @@ Constants live in `src/domain/layout-engine/config.ts` (stage 3) and are exporte
 | `MIN_COLUMN_WIDTH_CHARS` | 4 characters (2 fret digits + 1 padding each side) | fixed | (№20) |
 | `MAX_COLUMN_WIDTH_CHARS` | 12 characters — the text-input rejection threshold | fixed | (№20, №24) |
 | `STRIP_WIDTH_FRACTION` | 0.85 of the target width | fixed | (№20) |
-| `ROW_SPACING_CHARS` | 2 characters between string rows | provisional — finalized at stage 4 | (№32) |
-| `TEXT_ROW_SPACING_CHARS` | 1 character between the bottom string row and the column-text stack | provisional — finalized at stage 4 | (№24, №32) |
+| `ROW_SPACING_CHARS` | 2 characters between string rows | final — finalized together with the hardcoded MVP theme (`src/infrastructure/rendering/theme.ts`) | (№32) |
+| `TEXT_ROW_SPACING_CHARS` | 2 characters between the bottom string row and the column-text stack | final — finalized together with the hardcoded MVP theme (`src/infrastructure/rendering/theme.ts`); revised from the provisional 1 after the on-device check showed 1 advance (~9.6px) is smaller than the 12px column-text glyph the gap must clear | (№24, №32) |
 | Barline column width | 4 characters — `columnWidthChars` returns the minimum for `kind: 'barline'`; no dedicated constant | fixed | (№18) |
 | Target widths | current screen width (portrait and landscape); A4 portrait print width; preview width | one per consumer | (№23, №7) |
 

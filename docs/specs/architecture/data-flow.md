@@ -1,10 +1,10 @@
 # Data Flow
 
-> **Scaffold landed.** The first code exists (roadmap stage 1: Expo scaffold + `src/` layer skeleton, [ADR-0003](../decisions/0003-src-layer-directories.md)), but no five-stage operation is implemented yet: the editor pipeline (stages 1–5 of the worked example) belongs to roadmap stages 4–8. Treat this document as the contract those operations must satisfy; the `TODO: verify` markers below are resolved as the corresponding operations land (see [WORKFLOW.md](../WORKFLOW.md) §6).
+> **Scaffold landed.** The first code exists (roadmap stage 1: Expo scaffold + `src/` layer skeleton, [ADR-0003](../decisions/0003-src-layer-directories.md)), but no five-stage operation is implemented yet: the editor pipeline (stages 1–5 of the worked example) belongs to roadmap stages 5–8. Treat this document as the contract those operations must satisfy; the `TODO: verify` markers below are resolved as the corresponding operations land (see [WORKFLOW.md](../WORKFLOW.md) §6).
 
 ## Context
 
-A data-flow contract fixed early prevents the two classic failure modes of young projects: validation scattered across layers (same check in three places, none authoritative) and internal types leaking to boundaries (changing a database row breaks an API response). This document was fixed before the first code landed; the code base now exists (scaffold, [ADR-0003](../decisions/0003-src-layer-directories.md)), and the first editor operations implementing this pipeline arrive with roadmap stages 4–8.
+A data-flow contract fixed early prevents the two classic failure modes of young projects: validation scattered across layers (same check in three places, none authoritative) and internal types leaking to boundaries (changing a database row breaks an API response). This document was fixed before the first code landed; the code base now exists (scaffold, [ADR-0003](../decisions/0003-src-layer-directories.md)), and the first editor operations implementing this pipeline arrive with roadmap stages 5–8.
 
 ## Canonical Flow Shape
 
@@ -37,7 +37,7 @@ Every runtime operation — regardless of transport (HTTP, CLI, event, job) — 
 | 4. PERSIST & PROJECT | Infrastructure (via interfaces) | Durable writes, external calls, event emission. |
 | 5. DELIVER | Entry Points | Translate the operation result into the transport's vocabulary. |
 
-`TODO: verify` — the stage table and pipeline are unexercised: the scaffold (ADR-0003) ships no runtime operation yet, so there is nothing to check them against. When the first operation is implemented (roadmap stage 4+), trace it through stages 1–5 and record the concrete file paths at each stage here.
+`TODO: verify` — the stage table and pipeline are unexercised: no editor operation is implemented yet (the stage-4 demo screen renders the model directly — model → layout → plan → picture, no boundary operation), so there is nothing to check them against. When the first operation is implemented (roadmap stage 5+), trace it through stages 1–5 and record the concrete file paths at each stage here.
 
 ## Worked Example: "Insert a Note" (tap a cell, choose fret 7)
 

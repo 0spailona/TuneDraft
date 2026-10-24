@@ -1,6 +1,6 @@
 # Spec Index
 
-Navigation for TuneDraft's specification system. Project status: **stages 1–3 complete** — the Expo toolchain, the `src/` layer skeleton ([ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model (`src/domain/tabulature/`), and the layout engine (`src/domain/layout-engine/`, unit-tested per №34, [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md)) exist; editing, storage, and rendering are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
+Navigation for TuneDraft's specification system. Project status: **stages 1–4 complete** — the Expo toolchain, the `src/` layer skeleton ([ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model (`src/domain/tabulature/`), the layout engine (`src/domain/layout-engine/`, unit-tested per №34, [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md)), and the Skia screen renderer (`src/infrastructure/rendering/`, draw plan + executor per [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)) exist; editing, storage, and PDF export are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
 
 ## Task → Spec
 
@@ -9,7 +9,7 @@ Navigation for TuneDraft's specification system. Project status: **stages 1–3 
 | Add code to the `src/` layer skeleton (roadmap stages 2–10; stage 1 is done, see [ADR-0003](decisions/0003-src-layer-directories.md)) | [architecture/layers.md](architecture/layers.md) | [architecture/data-flow.md](architecture/data-flow.md), [WORKFLOW.md](WORKFLOW.md) §6 |
 | Implement the notebook data model (roadmap stage 2 — **done**: `src/domain/tabulature/`) | [domains/tabulature/README.md](domains/tabulature/README.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
 | Implement the layout engine: geometry, column widths, wrap rules (stage 3 — **done**: `src/domain/layout-engine/`, [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md)) | [domains/layout-engine.md](domains/layout-engine.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md), [domains/rendering/README.md](domains/rendering/README.md) |
-| Implement the Skia screen renderer (stage 4) | [domains/rendering/README.md](domains/rendering/README.md) | [domains/layout-engine.md](domains/layout-engine.md), [architecture/layers.md](architecture/layers.md) |
+| Implement the Skia screen renderer (stage 4 — **done**: `src/infrastructure/rendering/`, [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)) | [domains/rendering/README.md](domains/rendering/README.md) | [domains/layout-engine.md](domains/layout-engine.md), [architecture/layers.md](architecture/layers.md) |
 | Implement note input: cell/column menus, fret panel, undo/redo (stage 5) | [domains/editing/README.md](domains/editing/README.md) | [domains/editing/cell-and-column-menus.md](domains/editing/cell-and-column-menus.md), [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
 | Implement ribbon rows: insertion, drag, delete, scroll window (stage 6) | [domains/editing/lines-and-gestures.md](domains/editing/lines-and-gestures.md) | [domains/editing/README.md](domains/editing/README.md), [domains/rendering/README.md](domains/rendering/README.md) (virtualization №28) |
 | Implement save/load, autosave pocket, library screen (stage 7) | [domains/storage/README.md](domains/storage/README.md) | [domains/storage/pocket.md](domains/storage/pocket.md), [domains/storage/library.md](domains/storage/library.md) |
@@ -26,7 +26,7 @@ Navigation for TuneDraft's specification system. Project status: **stages 1–3 
 
 ## Dependency Graph
 
-The runtime tree is the stage-1 scaffold (root `App.tsx`/`index.ts` + `src/` layer skeleton, [ADR-0003](decisions/0003-src-layer-directories.md)), the stage-2 tabulature model (`src/domain/tabulature/`), and the stage-3 layout engine (`src/domain/layout-engine/`), which imports only `EntityId` from the tabulature module — the runtime dependency graph remains close to trivial. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
+The runtime tree is the stage-1 scaffold (root `App.tsx`/`index.ts` + `src/` layer skeleton, [ADR-0003](decisions/0003-src-layer-directories.md)), the stage-2 tabulature model (`src/domain/tabulature/`), the stage-3 layout engine (`src/domain/layout-engine/`, which imports only `EntityId` from the tabulature module), and the stage-4 screen renderer (`src/infrastructure/rendering/`, which imports the layout engine's `layoutNotebook` and the tabulature `Notebook` type) — the runtime dependency graph remains close to trivial. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
 
 ```
                 ┌─────────────────────────────────┐
@@ -93,5 +93,6 @@ docs/specs/
     ├── 0001-bootstrap-spec-system-before-code.md
     ├── 0002-specs-live-in-docs-specs.md
     ├── 0003-src-layer-directories.md          src/ layer directories: domain/application/infrastructure/i18n (stage 1)
-    └── 0004-layout-character-units-and-wrap-policy.md   character-unit coordinates + measure-boundary wrap (stage 3)
+    ├── 0004-layout-character-units-and-wrap-policy.md   character-unit coordinates + measure-boundary wrap (stage 3)
+    └── 0005-screen-renderer-draw-plan-and-skia-executor.md   draw plan + Skia executor, role fonts, path clef (stage 4)
 ```

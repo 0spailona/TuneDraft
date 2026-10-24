@@ -8,12 +8,19 @@ const dictionary = ru;
 /**
  * Возвращает строку интерфейса по ключу.
  * Ключи типизированы: несуществующий ключ — ошибка компиляции.
- * Подстраховка от динамически собранных ключей: в dev/тестах отсутствие
- * ключа в словаре — явная ошибка, а не пустая строка в UI.
+ *
+ * Подстраховка от динамически собранных ключей:
+ * — в dev/тестах отсутствие ключа — явная ошибка (fail fast);
+ * — в проде — graceful degradation: возвращается сам ключ
+ *   (например, «toolbar.undo» вместо пустой кнопки), чтобы баг
+ *   был виден в UI, но не ронял экран.
  */
 export function t(key: TranslationKey): string {
-  if (process.env.NODE_ENV !== 'production' && !(key in dictionary)) {
-    throw new Error(`i18n: ключ «${String(key)}» отсутствует в словаре ru`);
+  if (!(key in dictionary)) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(`i18n: ключ «${String(key)}» отсутствует в словаре ru`);
+    }
+    return key;
   }
   return dictionary[key];
 }

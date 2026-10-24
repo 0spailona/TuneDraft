@@ -5,12 +5,17 @@
 **TuneDraft** — Android-приложение: табулатурная тетрадь для бас-гитариста
 (4 струны E–A–D–G, лады 0–24, экспорт в PDF A4 портрет).
 
-**Текущее состояние: этап 2 завершён.** В репозитории: Expo-каркас (TypeScript) и слои
+**Текущее состояние: этап 4 завершён.** В репозитории: Expo-каркас (TypeScript) и слои
 `src/` ([ADR-0003](docs/specs/decisions/0003-src-layer-directories.md)) — entry-файлы в корне
-(`index.ts`, `App.tsx`), словарь строк `src/i18n/` (№31) и модель данных тетради
+(`index.ts`, `App.tsx`), словарь строк `src/i18n/` (№31), модель данных тетради
 `src/domain/tabulature/` (типы, иммутабельные мутации с ошибками-значениями, детерминированные
-id, фикстуры; юнит-тесты №34 зелёные). `src/application/` и `src/infrastructure/` —
-пока README с правилами слоёв. Layout, ввод, хранение, рендер — этапы 3–8.
+id, фикстуры; юнит-тесты №34 зелёные), layout-движок `src/domain/layout-engine/`
+(проход MEASURE → WRAP → EMIT в символах-единицах, [ADR-0004](docs/specs/decisions/0004-layout-character-units-and-wrap-policy.md);
+юнит- и приёмочные тесты зелёные, №34) и экранный рендер `src/infrastructure/rendering/`
+(план отрисовки plan.ts + Skia-исполнитель skia.ts + NotebookCanvas.tsx + тема theme.ts,
+[ADR-0005](docs/specs/decisions/0005-screen-renderer-draw-plan-and-skia-executor.md); тесты плана зелёные, №34).
+`App.tsx` показывает демо-тетрадь «как тетрадь» и пересобирает layout при повороте (№23).
+`src/application/` — пока README с правилами слоёв. Ввод, хранение, PDF-экспорт — этапы 5–8.
 Новый код обязан ложиться в уже зафиксированную дисциплину (слои, спеки, ADR).
 
 ## Карта документации (читать перед действием)
