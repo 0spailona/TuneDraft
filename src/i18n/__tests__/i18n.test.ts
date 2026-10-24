@@ -16,6 +16,37 @@ describe('i18n словарь (smoke)', () => {
     expect(() => t('app.nonexistent')).toThrow(/отсутствует в словаре/);
   });
 
+  it('t() в проде возвращает сам ключ (graceful degradation)', () => {
+    // В production dev-ассерт отключён: вместо throw и вместо undefined
+    // t() возвращает сам ключ, чтобы пропущенная строка была видна в UI,
+    // а не превратилась в пустую кнопку.
+    const original = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      // @ts-expect-error — намеренно протаскиваем несуществующий ключ.
+      const fallback: string = t('app.nonexistent');
+      expect(fallback).toBe('app.nonexistent');
+    } finally {
+      process.env.NODE_ENV = original;
+    }
+  });
+
+  it('словарь содержит полный состав тулбара (№37)', () => {
+    // №37: панель редактора всегда содержит Сохранить/Закрыть/Отменить/
+    // Вернуть/Экспорт PDF — все пять строк обязаны быть в словаре.
+    const toolbar: Array<[TranslationKey, string]> = [
+      ['toolbar.save', 'Сохранить'],
+      ['toolbar.close', 'Закрыть'],
+      ['toolbar.undo', 'Отменить'],
+      ['toolbar.redo', 'Вернуть'],
+      ['toolbar.exportPdf', 'Экспорт PDF'],
+    ];
+    for (const [key, text] of toolbar) {
+      expect(ru[key]).toBe(text);
+      expect(t(key)).toBe(text);
+    }
+  });
+
   it('t() возвращает русскую строку для ключей словаря', () => {
     // Русский — базовый язык (№31): в базовом словаре обязаны быть
     // строки с кириллицей. Проверяем, что такие ключи вообще есть,

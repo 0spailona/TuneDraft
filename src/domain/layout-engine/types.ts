@@ -59,8 +59,8 @@ export interface LaidOutSystem {
  * Разложенная таб-строка (№6): одна или несколько систем по ёмкости полосы
  * (№20) и вертикальные координаты строк струн, выведенные из tuning модели
  * (№2): stringY[i] = i * ROW_SPACING_CHARS — пятая струна (low B) не требует
- * правок движка (№2). Вертикальные метрики ПРОБНЫЕ (provisional):
- * финализируются на этапе 4 (№32).
+ * правок движка (№2). Вертикальные метрики ФИНАЛЬНЫЕ (№32): согласованы
+ * с темой рендера (src/infrastructure/rendering/theme.ts).
  */
 export interface TabLineLayout {
   readonly lineId: EntityId;

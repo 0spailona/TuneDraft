@@ -8,7 +8,7 @@ The bottom-panel context menus that turn a selected cell (№5, №21) or a sele
 
 ## Key Files
 
-None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). <!-- TODO: verify when first editing code lands -->
+None yet — this domain's code is not implemented yet (the repository already ships the model, layout engine, and screen renderer — stages 2–4; this domain's roadmap stage has not run). <!-- TODO: verify when first editing code lands -->
 
 ## Behavior
 

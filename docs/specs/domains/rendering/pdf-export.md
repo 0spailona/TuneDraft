@@ -1,6 +1,6 @@
 # PDF Export
 
-> **Bootstrap spec.** This document is written before any source code exists (see [ADR-0001](../../decisions/0001-bootstrap-spec-system-before-code.md)). Every claim about future code carries a `<!-- TODO: verify -->` marker. Decision numbers `(№NN)` refer to the decisions table in `docs/КАРТА-ПРОЕКТА.md`.
+> **Bootstrap spec.** This document is written before its source code exists (see [ADR-0001](../../decisions/0001-bootstrap-spec-system-before-code.md)): the HTML→PDF pipeline is roadmap stage 8, while the repository already ships the screen renderer (stage 4, [ADR-0005](../../decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)). Every claim about future code carries a `<!-- TODO: verify -->` marker. Decision numbers `(№NN)` refer to the decisions table in `docs/КАРТА-ПРОЕКТА.md`.
 
 ## Role
 
@@ -8,7 +8,7 @@ Produces the exported PDF document from layout output through the HTML→PDF pip
 
 ## Key Files
 
-None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). <!-- TODO: verify when export code lands -->
+None yet — this domain's code is not implemented yet (the repository already ships the model, layout engine, and screen renderer — stages 2–4; this domain's roadmap stage has not run). <!-- TODO: verify when export code lands -->
 
 ## Behavior
 

@@ -1,26 +1,22 @@
+// Entry-точка (R4): только wiring. Демо-тетрадь «как тетрадь» (этап 4):
+// фикстура модели → NotebookCanvas, который на каждой ширине экрана сам
+// пересобирает layout и план. Поворот экрана (useWindowDimensions) меняет
+// ширину — layout перестраивается под неё (№23), модель не меняется.
+// Видимых строк в компоненте нет (№31): весь контент — из модели тетради.
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 
-import { t } from './src/i18n';
+import { demoNotebookFixture } from './src/domain/tabulature/fixtures';
+import { NotebookCanvas } from './src/infrastructure/rendering/NotebookCanvas';
 
-// Экран-заглушка: все видимые строки — из словаря (№31), без хардкода.
+const demoNotebook = demoNotebookFixture();
+
 export default function App() {
+  const { width } = useWindowDimensions();
   return (
-    <View style={styles.container}>
-      <Text style={styles.name}>{t('app.name')}</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <NotebookCanvas notebook={demoNotebook} widthPx={width} />
+      <StatusBar style="dark" />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  name: {
-    fontSize: 24,
-  },
-});

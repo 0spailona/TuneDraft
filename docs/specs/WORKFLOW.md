@@ -13,7 +13,7 @@ Specifications are the **source of truth** about the intended behavior of the sy
 - Organized by **domains** (conceptual areas), NOT by repository file structure.
 - **Contracts** are a separate first-class entity for describing boundaries between layers.
 
-**This project's current state:** scaffold landed (see [ADR-0003](decisions/0003-src-layer-directories.md)). Roadmap stage 1 shipped the Expo toolchain and the `src/` layer skeleton; domain features remain unimplemented, so their specs still carry `<!-- TODO: verify -->` markers on code-dependent claims. Section 6 defines the marker-resolution workflow that applies as each stage lands.
+**This project's current state:** stages 1–4 landed (see [ADR-0003](decisions/0003-src-layer-directories.md), [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md), [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)). The Expo toolchain, the `src/` layer skeleton, the tabulature model, the layout engine, and the Skia screen renderer exist; editing, storage, and the HTML→PDF pipeline remain unimplemented, so their specs still carry `<!-- TODO: verify -->` markers on code-dependent claims. Section 6 defines the marker-resolution workflow that applies as each stage lands.
 
 ---
 

@@ -1,6 +1,6 @@
 # App Shell
 
-> **Scaffold landed** (roadmap stage 1: Expo scaffold + `src/` skeleton, [ADR-0003](../decisions/0003-src-layer-directories.md)). Claims about implemented code below are verified against the tree; claims about features not yet built (screens, toolbar, virtualization, gestures) still carry `<!-- TODO: verify -->` markers. Decision references `(№NN)` point to [КАРТА-ПРОЕКТА.md](../../КАРТА-ПРОЕКТА.md).
+> **Scaffold landed + demo screen renderer wired** (roadmap stages 1 and 4: Expo scaffold + `src/` skeleton, [ADR-0003](../decisions/0003-src-layer-directories.md); draw plan + Skia executor, [ADR-0005](../decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)). Claims about implemented code below are verified against the tree; claims about features not yet built (Library/Editor screens, toolbar, mode switch, virtualization, gestures) still carry `<!-- TODO: verify -->` markers. Decision references `(№NN)` point to [КАРТА-ПРОЕКТА.md](../../КАРТА-ПРОЕКТА.md).
 
 ## Purpose
 
@@ -8,13 +8,13 @@ The app shell is the outermost runtime layer of TuneDraft: it owns screen naviga
 
 ## Key Files
 
-- `App.tsx` — root component (Expo entry point); currently a stub screen rendering the app name from the dictionary; screens, toolbar, and mode state land in roadmap stages 5–7.
+- `App.tsx` — root component (Expo entry point); wires the demo notebook fixture (`demoNotebookFixture()`) into `NotebookCanvas` with the width from `useWindowDimensions` — rotation re-runs layout and plan at the new width, the model stays fixed (№23); contains no business logic (R4). Library/Editor screens, toolbar, and mode state land in roadmap stages 5–7.
 - `index.ts` — component registration (`registerRootComponent`), wiring only (R4).
 - `src/i18n/index.ts` — `t(key)` lookup over the dictionary; the single channel components use for user-visible strings (№31).
-- `src/i18n/ru.ts` — base Russian dictionary (keys `app.name`, `toolbar.save`); grows as shell UI lands.
+- `src/i18n/ru.ts` — base Russian dictionary (`app.name` plus the five `toolbar.*` keys of №37); grows as shell UI lands.
 - `src/i18n/__tests__/i18n.test.ts` — dictionary smoke tests (№34).
 
-Shell screens (Library, Editor, toolbar, mode switch) have no files yet — their roadmap stages have not run.
+Library/Editor screens, the toolbar, and the mode switch have no files yet — their roadmap stages have not run. The demo screen (`App.tsx` → `NotebookCanvas`) carries no user-visible strings: all its content comes from the notebook model (№31).
 
 ## Core Types
 
@@ -25,6 +25,10 @@ The only shell-owned types shipped so far are the dictionary types (№31):
 export const ru = {
   'app.name': 'TuneDraft',
   'toolbar.save': 'Сохранить',
+  'toolbar.close': 'Закрыть',
+  'toolbar.undo': 'Отменить',
+  'toolbar.redo': 'Вернуть',
+  'toolbar.exportPdf': 'Экспорт PDF',
 } as const;
 
 export type Dictionary = typeof ru;
@@ -33,16 +37,30 @@ export type TranslationKey = keyof Dictionary;
 // src/i18n/index.ts
 export declare function t(key: TranslationKey): string;
 // Ambient declaration for the spec: the real implementation lives in
-// src/i18n/index.ts. Non-production builds throw on a key missing from the
-// dictionary (a runtime guard for dynamically-built keys that bypass the
-// compile-time check).
+// src/i18n/index.ts. A key missing from the dictionary is a compile-time
+// error; at runtime, a dynamically-built key that bypasses the compile-time
+// check throws in non-production builds (fail fast) and degrades gracefully
+// in production — `t()` returns the key itself (e.g. "toolbar.undo" on the
+// button) instead of crashing the screen.
 ```
 
-A misspelled key is a compile error (`TranslationKey` is a union of literal keys); components hold keys only, never string values. As a runtime backstop, `t()` throws in dev/test when a key is absent from the dictionary (dynamically assembled keys), instead of rendering an empty string. Screen/mode/navigation types (Library ↔ Editor state, Read/Edit mode, Back contract) land with their roadmap stages.
+Screen/mode/navigation types (Library ↔ Editor state, Read/Edit mode, Back contract) land with their roadmap stages.
 
 ## Flow
 
-Primary happy path (open an existing notebook and play from it):
+Current flow (stage 4 demo screen):
+
+```
+ app launch ──▶ App.tsx (wiring only, R4)
+                    │  demoNotebookFixture() — module-level model constant
+                    │  useWindowDimensions() — width in px (rotation re-runs, №23)
+                    ▼
+        NotebookCanvas (src/infrastructure/rendering/):
+        floor(width / advance) → layoutNotebook → draw plan → SkPicture
+        rendered in a ScrollView — the notebook «как тетрадь» (№14, №23)
+```
+
+Planned shell flow (stages 5–7; screens not built yet):
 
 ```
  app launch ──▶ LIBRARY (start screen, №39)
@@ -107,5 +125,6 @@ Toolbar action dispatch (every action follows the five-stage pipeline of [archit
 
 - [architecture/layers.md](../architecture/layers.md) — the dependency discipline the shell follows as the Entry Points layer.
 - [architecture/data-flow.md](../architecture/data-flow.md) — the five-stage pipeline every shell-dispatched action follows.
+- [Rendering](rendering/README.md) — the screen pipeline `App.tsx` wires in ([ADR-0005](../decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)).
 - [decisions/0001-bootstrap-spec-system-before-code.md](../decisions/0001-bootstrap-spec-system-before-code.md) — the TODO-marker protocol used across this pre-code spec.
 - [КАРТА-ПРОЕКТА.md](../../КАРТА-ПРОЕКТА.md) — source of every `(№NN)` decision reference.

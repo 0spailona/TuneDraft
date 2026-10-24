@@ -3,9 +3,15 @@
 Табулатурная тетрадь для бас-гитариста — Android-приложение (Expo + TypeScript):
 4 струны E–A–D–G, лады 0–24, экспорт в PDF A4 портрет.
 
-Состояние: этап 1 дорожной карты — каркас Expo (TypeScript) и скелет слоёв `src/`
-([ADR-0003](docs/specs/decisions/0003-src-layer-directories.md)). Доменные фичи
-(модель, layout-движок, ввод, хранение, рендер) — этапы 2–8.
+Состояние: этапы 1–4 дорожной карты — каркас Expo (TypeScript), скелет слоёв `src/`
+([ADR-0003](docs/specs/decisions/0003-src-layer-directories.md)), модель данных
+`src/domain/tabulature/`, layout-движок `src/domain/layout-engine/`
+([ADR-0004](docs/specs/decisions/0004-layout-character-units-and-wrap-policy.md)) и экранный
+Skia-рендер `src/infrastructure/rendering/`
+([ADR-0005](docs/specs/decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)).
+Приложение показывает демо-тетрадь «как тетрадь»: 4 струны, цифры ладов, тактовые черты,
+тексты, ключ 𝄢; поворот пересобирает layout под новую ширину (№23). Ввод, хранение
+и PDF-экспорт — этапы 5–8.
 
 ## Запуск
 

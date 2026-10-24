@@ -1,6 +1,6 @@
 # Editing
 
-> **Pre-code domain spec.** TuneDraft has no source code yet ([ADR-0001](../../decisions/0001-bootstrap-spec-system-before-code.md)). This document defines intended behavior for the first implementation; every claim about code that does not exist yet carries a `<!-- TODO: verify -->` marker.
+> **Pre-code domain spec.** The editing domain is not implemented yet (roadmap stage 5; the repository already contains the model, layout engine, and screen renderer — stages 2–4). This document defines intended behavior for the first implementation; every claim about code that does not exist yet carries a `<!-- TODO: verify -->` marker.
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Editing turns touch input into mutations of the notebook model. It owns selectio
 
 ## Key Files
 
-None yet — this domain's code is not implemented yet (the stage-1 scaffold, [ADR-0003](../../decisions/0003-src-layer-directories.md), ships only the layer skeleton and i18n). <!-- TODO: verify when first editing code lands -->
+None yet — this domain's code is not implemented yet (the repository already ships the model, layout engine, and screen renderer — stages 2–4; this domain's roadmap stage has not run). <!-- TODO: verify when first editing code lands -->
 
 Intended placement (see [layers.md](../../architecture/layers.md)): mutation orchestration lives in the Application layer; gesture and menu UI glue sits at the Entry-Points level. <!-- TODO: verify -->
 

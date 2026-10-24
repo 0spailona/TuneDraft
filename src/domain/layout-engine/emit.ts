@@ -48,7 +48,8 @@ export interface EmitSystemInput {
 /**
  * y строк струн таб-строки (№2): stringY[i] = i · ROW_SPACING_CHARS — список
  * выводится из tuning модели, поэтому пятая струна (low B) не требует правок
- * движка (№2). Вертикальные метрики ПРОБНЫЕ (provisional, №32).
+ * движка (№2). Вертикальные метрики ФИНАЛЬНЫЕ (№32): согласованы с темой
+ * рендера (src/infrastructure/rendering/theme.ts).
  *
  * @param tuning строй таб-строки — список MIDI-нот (№2)
  * @returns y строк струн от верха таб-строки, в символах
@@ -61,7 +62,8 @@ export function emitStringYChars(tuning: readonly number[]): readonly number[] {
  * y строки текста в стопке под таб-строкой (№24): зазор TEXT_ROW_SPACING_CHARS
  * от нижней строки струн, дальше — по строке на каждый текст стопки. Стопка —
  * на всю систему (тексты всех её колонок), x каждой строки — x его колонки.
- * ПРОБНОЕ ЗНАЧЕНИЕ (provisional): финализируется на этапе 4 (№32).
+ * ФИНАЛЬНОЕ ЗНАЧЕНИЕ (№32): согласовано с темой рендера — тексты колонок
+ * рисуются моно-семейством меньшим кеглем (theme.ts), шаг стопки — 1 символ.
  */
 function textStackYChars(bottomStringYChars: number, row: number): number {
   return bottomStringYChars + (row + 1) * TEXT_ROW_SPACING_CHARS;
