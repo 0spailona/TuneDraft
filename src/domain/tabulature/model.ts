@@ -2,8 +2,9 @@
 // ошибки — значения, не исключения (EXECUTE-конвенция data-flow.md).
 // Инварианты и правила: docs/specs/domains/tabulature/notebook-model.md.
 // Слой Domain (R1): без I/O и фреймворков; id-генератор передаётся явно (R6).
-// Вставка/перемещение/удаление строк ленты — этап 6 (editing, №36);
-// undo-история (№25) и запись в карман (№26) — Application/Infrastructure.
+// Вставка строк ленты — контракт insertLine с этапа 5 (editing, №36);
+// перемещение/удаление строк, undo-история (№25) и запись в карман (№26) —
+// этап 6 и слои Application/Infrastructure.
 
 import type {
   Column,
@@ -22,6 +23,7 @@ import {
   DEFAULT_DURATION,
   DEFAULT_TUNING,
   FORMAT_VERSION,
+  MAX_COLUMN_TEXT_CHARS,
   MAX_COLUMN_TEXTS,
   MAX_FRET,
   MIN_FRET,
@@ -76,14 +78,39 @@ export function createTextLine(text: string, gen: IdGenerator): TextLine {
 }
 
 /**
- * Добавляет строку в конец ленты — ТОЛЬКО для фикстур и тестов (без проверки
- * вида строки и без контракта ModelResult; runtime-коду её не вызывать).
- * Этап 6 (editing, №36) вводит контрактную insertLine(notebook, line,
- * position): ModelResult<Notebook> — вставка/перемещение строк ленты только
- * через неё; appendLine удаляется с этапа 6.
+ * Вставляет строку в ленту по позиции — единственный путь вставки строк
+ * для runtime-кода (№36, с этапа 5: кнопка «+» и лонг-тап вставляют строки
+ * только через неё). Позиция — индекс в ленте 0..lines.length
+ * (lines.length — дописать в конец). Отказы: позиция не целое вне
+ * 0..lines.length — position-out-of-range; строка не объект или неизвестного
+ * вида (№6) — invalid-notebook; строка с id, уже живущим в ленте (повторная
+ * вставка той же ссылки — в т.ч. после undo) — line-id-duplicate: дубль id
+ * ломал бы адресацию целей (№19, №36). Иммутабельная вставка (EXECUTE, data-flow.md).
  */
-export function appendLine(notebook: Notebook, line: RibbonLine): Notebook {
-  return { ...notebook, lines: [...notebook.lines, line] };
+export function insertLine(
+  notebook: Notebook,
+  line: RibbonLine,
+  position: number,
+): ModelResult<Notebook> {
+  if (typeof line !== 'object' || line === null) {
+    return err('invalid-notebook', 'строка ленты — не объект (№6)');
+  }
+  if (line.kind !== 'tab' && line.kind !== 'text') {
+    const lineId = String((line as { id?: unknown }).id);
+    return err('invalid-notebook', `строка «${lineId}»: неизвестный вид строки (№6)`);
+  }
+  if (!Number.isInteger(position) || position < 0 || position > notebook.lines.length) {
+    return err(
+      'position-out-of-range',
+      `позиция ${String(position)} вне диапазона 0..${String(notebook.lines.length)} (№36)`,
+    );
+  }
+  if (notebook.lines.some((existing) => existing.id === line.id)) {
+    return err('line-id-duplicate', `строка «${line.id}» уже есть в ленте (№19, №36)`);
+  }
+  const lines = [...notebook.lines];
+  lines.splice(position, 0, line);
+  return ok({ ...notebook, lines });
 }
 
 // ─── Внутренние помощники навигации ─────────────────────────────────────────
@@ -411,7 +438,8 @@ export function deleteColumn(
 
 /**
  * Добавляет текст колонки: привязка по columnId (№19), максимум 3 на колонку
- * (№6) — 4-й отказывается (№35, по аналогии с №24: предупреждение, не обрезка).
+ * (№6) — 4-й отказывается (№35); длина больше MAX_COLUMN_TEXT_CHARS — отказ
+ * column-text-too-long (№24: предупреждение, не обрезка и не перенос).
  * В колонку-черту тексты не добавляются (№18).
  */
 export function addColumnText(
@@ -429,6 +457,12 @@ export function addColumnText(
   if (ref.column.kind === 'barline') {
     return err('column-is-barline', `к колонке-черте «${columnId}» тексты не привязываются (№18)`);
   }
+  if (text.length > MAX_COLUMN_TEXT_CHARS) {
+    return err(
+      'column-text-too-long',
+      `текст колонки «${columnId}» длиннее ${MAX_COLUMN_TEXT_CHARS} символов (№24)`,
+    );
+  }
   const count = ref.line.texts.filter((t) => t.columnId === columnId).length;
   if (count >= MAX_COLUMN_TEXTS) {
     return err(
@@ -445,7 +479,10 @@ export function addColumnText(
   );
 }
 
-/** Меняет содержимое текста колонки — id сохраняется (№27, №35). */
+/**
+ * Меняет содержимое текста колонки — id сохраняется (№27, №35); длина нового
+ * текста ограничена MAX_COLUMN_TEXT_CHARS (№24, column-text-too-long).
+ */
 export function editColumnText(
   notebook: Notebook,
   lineId: string,
@@ -460,6 +497,12 @@ export function editColumnText(
   const has = line.texts.some((t) => t.id === textId);
   if (!has) {
     return err('text-not-found', `текст «${textId}» не найден в таб-строке «${lineId}»`);
+  }
+  if (text.length > MAX_COLUMN_TEXT_CHARS) {
+    return err(
+      'column-text-too-long',
+      `новый текст «${textId}» длиннее ${MAX_COLUMN_TEXT_CHARS} символов (№24)`,
+    );
   }
   return ok(
     replaceLine(notebook, index, {
@@ -496,9 +539,10 @@ export function removeColumnText(
 
 /**
  * Проверяет инварианты тетради целиком (сводка валидации notebook-model.md):
- * fret 0–24; одна нота на струну в колонке; ≤ 3 текстов на колонку; черта
- * без нот и текстов; привязка текстов по существующему columnId; уникальность
- * и наличие id (№19); version/name/albumId у корня (№22, №29, №30).
+ * fret 0–24; одна нота на струну в колонке; ≤ 3 текстов на колонку; длина
+ * текста колонки ≤ MAX_COLUMN_TEXT_CHARS (№24); черта без нот и текстов;
+ * привязка текстов по существующему columnId; уникальность и наличие id
+ * (№19); version/name/albumId у корня (№22, №29, №30).
  * Возвращает ok(true) либо invalid-notebook со списком всех нарушений.
  */
 export function validateNotebook(notebook: Notebook): ModelResult<true> {
@@ -604,6 +648,13 @@ export function validateNotebook(notebook: Notebook): ModelResult<true> {
             continue;
           }
           checkId(text.id, 'текст колонки');
+          if (typeof text.text !== 'string') {
+            violations.push(`текст «${text.id}»: text не строка (№24)`);
+          } else if (text.text.length > MAX_COLUMN_TEXT_CHARS) {
+            violations.push(
+              `текст «${text.id}»: ${text.text.length} символов > ${MAX_COLUMN_TEXT_CHARS} (№24)`,
+            );
+          }
           const column = line.columns.find(
             (c: unknown): c is Column =>
               typeof c === 'object' && c !== null && (c as { id?: unknown }).id === text.columnId,

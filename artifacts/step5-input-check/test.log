@@ -1,0 +1,17 @@
+npm notice run tunedraft@1.0.0 test
+npm notice run jest
+PASS src/domain/layout-engine/__tests__/layout-engine.test.ts
+PASS src/domain/layout-engine/__tests__/emit.test.ts
+PASS src/domain/layout-engine/__tests__/measure.test.ts
+PASS src/domain/layout-engine/__tests__/wrap.test.ts
+PASS src/i18n/__tests__/i18n.test.ts
+PASS src/domain/tabulature/__tests__/notebook-model.test.ts
+PASS src/infrastructure/rendering/__tests__/plan.test.ts
+PASS src/application/editing/__tests__/controller.test.ts
+PASS src/infrastructure/rendering/__tests__/hit-test.test.ts
+
+Test Suites: 9 passed, 9 total
+Tests:       194 passed, 194 total
+Snapshots:   0 total
+Time:        2.273 s
+Ran all test suites.

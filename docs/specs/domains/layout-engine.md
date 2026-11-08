@@ -8,7 +8,7 @@ The layout engine is the single pure-JS geometry kernel of TuneDraft: it convert
 
 ## Key Files
 
-- `src/domain/layout-engine/config.ts` — geometric constants in character units (№32): `MIN_COLUMN_WIDTH_CHARS = 4`, `MAX_COLUMN_WIDTH_CHARS = 12`, `STRIP_WIDTH_FRACTION = 0.85`, and the final vertical metrics `ROW_SPACING_CHARS = 2`, `TEXT_ROW_SPACING_CHARS = 1` (finalized together with the hardcoded MVP theme, `src/infrastructure/rendering/theme.ts`)
+- `src/domain/layout-engine/config.ts` — geometric constants in character units (№32): `MIN_COLUMN_WIDTH_CHARS = 4`, `MAX_COLUMN_WIDTH_CHARS = 12` (derived from the tabulature model's `MAX_COLUMN_TEXT_CHARS` — one source of truth), `STRIP_WIDTH_FRACTION = 0.85`, and the final vertical metrics `ROW_SPACING_CHARS = 2`, `TEXT_ROW_SPACING_CHARS = 1` (finalized together with the hardcoded MVP theme, `src/infrastructure/rendering/theme.ts`)
 - `src/domain/layout-engine/types.ts` — the output vocabulary of a layout pass (see Core Types); imports only `EntityId` from the tabulature model (R1)
 - `src/domain/layout-engine/measure.ts` — the MEASURE pass (Flow step 1): `columnWidthChars(column, texts)` — 4…12 characters, barline columns always the minimum (№18) — and `systemCapacity(targetWidthChars)` — the strip/capacity floor arithmetic (№20)
 - `src/domain/layout-engine/wrap.ts` — the WRAP pass (Flow step 2): `wrapTabLine(columns, widths, capacity)` — trailing-empty shrink first, then measure-boundary wrap ([ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md))
@@ -115,7 +115,7 @@ Runtime happy paths (the screen renderer is shipped — stage 4 consumes `layout
 - Geometry is always computed at the target width of its consumer: screen, PDF, and preview each get their own layout pass, and PDF/preview results always stay independent of the current screen orientation (№23).
 - Every column always starts at the minimum width of 4 characters (2 for the fret digits plus 1 padding each side) and only grows — to fit its longest column text — up to the 12-character maximum (№20, №24).
 - Character widths are always measured in the advance of the monospace fret-digit font — as character units, the single unit of every coordinate and width the engine emits (№32, [ADR-0004](../decisions/0004-layout-character-units-and-wrap-policy.md)); each renderer multiplies by its own advance, so the engine itself never sees a font.
-- Reaching the 12-character maximum always rejects text input upstream in the editing domain with a warning; the engine itself always leaves column text untruncated and unwrapped (№24).
+- Reaching the 12-character maximum always rejects text input upstream in the editing domain with a warning (`column-text-too-long`, enforced in the tabulature model since stage 5); the engine itself always leaves column text untruncated and unwrapped (№24).
 - The wrap always compares column-width sums against the strip width — `floor(85% of the target width)` characters; the minimum-cell count (`capacityColumns`) stays a derived measure metric, not the wrap bound (№20).
 - On overflow the engine always shrinks first: trailing empty columns are always removed before any wrap to a new system happens; wrapping occurs only when no trailing empty columns remain (№20).
 - A measure always moves to the next system as a whole: the engine always breaks a tab line only at measure boundaries — never inside a measure (№18).
@@ -124,7 +124,7 @@ Runtime happy paths (the screen renderer is shipped — stage 4 consumes `layout
 - Every wrap decision depends only on `(model, target width)`, so re-running the pass on identical input always yields identical geometry (№14).
 - Each ribbon line always lays out independently of every other line — its geometry depends only on its own columns and the target width — so the render window (visible lines plus a reserve margin) is always servable without laying out the whole document (№28).
 
-The width/capacity invariants are checked by the stage-3 unit tests in `src/domain/layout-engine/__tests__/measure.test.ts`, and the wrap invariants by `src/domain/layout-engine/__tests__/wrap.test.ts` (№34); invariants that need consumers or renderers (geometry at consumer width, text rejection upstream) remain testable only when those stages land (4–8).
+The width/capacity invariants are checked by the stage-3 unit tests in `src/domain/layout-engine/__tests__/measure.test.ts`, and the wrap invariants by `src/domain/layout-engine/__tests__/wrap.test.ts` (№34); invariants that need consumers or renderers (geometry at consumer width) remain testable only when those stages land (4–8); the text rejection upstream landed with stage 5 and is enforced and tested in the tabulature model suite (`column-text-too-long`).
 
 ## Configuration
 
@@ -133,7 +133,7 @@ Constants live in `src/domain/layout-engine/config.ts` (stage 3) and are exporte
 | Parameter | Value | Valid values | Source |
 | --------- | ------------ | ------------ | ------ |
 | `MIN_COLUMN_WIDTH_CHARS` | 4 characters (2 fret digits + 1 padding each side) | fixed | (№20) |
-| `MAX_COLUMN_WIDTH_CHARS` | 12 characters — the text-input rejection threshold | fixed | (№20, №24) |
+| `MAX_COLUMN_WIDTH_CHARS` | 12 characters — the text-input rejection threshold; derived from the tabulature model's `MAX_COLUMN_TEXT_CHARS` | fixed | (№20, №24) |
 | `STRIP_WIDTH_FRACTION` | 0.85 of the target width | fixed | (№20) |
 | `ROW_SPACING_CHARS` | 2 characters between string rows | final — finalized together with the hardcoded MVP theme (`src/infrastructure/rendering/theme.ts`) | (№32) |
 | `TEXT_ROW_SPACING_CHARS` | 2 characters between the bottom string row and the column-text stack | final — finalized together with the hardcoded MVP theme (`src/infrastructure/rendering/theme.ts`); revised from the provisional 1 after the on-device check showed 1 advance (~9.6px) is smaller than the 12px column-text glyph the gap must clear | (№24, №32) |

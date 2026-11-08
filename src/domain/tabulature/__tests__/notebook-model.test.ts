@@ -3,7 +3,7 @@
 // of stage-2 model unit tests». Конвенции: ошибки — значения (не throw),
 // id стабильны и уникальны (№19), мутации иммутабельны.
 
-import type { Column, ModelErrorCode, ModelResult, Notebook, TabLine } from '../types';
+import type { Column, ModelErrorCode, ModelResult, Notebook, RibbonLine, TabLine } from '../types';
 import { DEFAULT_DURATION, FORMAT_VERSION, MAX_COLUMN_TEXTS } from '../types';
 import { createIdGenerator } from '../ids';
 import {
@@ -12,16 +12,17 @@ import {
   clearColumn,
   createNotebook,
   createTabLine,
+  createTextLine,
   deleteColumn,
   editColumnText,
   editNoteFret,
   insertColumn,
+  insertLine,
   insertNote,
   removeColumnText,
   removeNote,
   setBarline,
   validateNotebook,
-  appendLine,
 } from '../model';
 import { demoNotebookFixture, emptyNotebookFixture } from '../fixtures';
 
@@ -56,7 +57,7 @@ function baseNotebook(): { nb: Notebook; line: TabLine } {
   const gen = createIdGenerator();
   let nb = createNotebook('Тестовая', gen);
   const line = createTabLine(4, gen);
-  nb = appendLine(nb, line);
+  nb = must(insertLine(nb, line, 0));
   return { nb, line };
 }
 
@@ -112,6 +113,78 @@ describe('корневые поля тетради (№22, №29, №30)', () =>
     for (const c of line.columns) {
       expect(c.kind).toBe('content');
       expect(c.notes).toEqual([]);
+    }
+  });
+});
+
+// ─── Вставка строк ленты (№36, этап 5) ─────────────────────────────────────
+
+describe('insertLine: вставка строк ленты (№36)', () => {
+  it('вставляет таб-строку в середину ленты: порядок остальных сохранён', () => {
+    const gen = createIdGenerator();
+    const a = createTextLine('до', gen);
+    const b = createTextLine('после', gen);
+    let nb = createNotebook('Лента', gen);
+    nb = must(insertLine(nb, a, 0));
+    nb = must(insertLine(nb, b, 1));
+    const mid = createTabLine(4, gen);
+    const res = insertLine(nb, mid, 1);
+    expectOk(res);
+    expect(res.value.lines.map((l) => l.id)).toEqual([a.id, mid.id, b.id]);
+    expectOk(validateNotebook(res.value));
+  });
+
+  it('вставляет текст-строку в конец ленты (позиция lines.length)', () => {
+    const gen = createIdGenerator();
+    const a = createTextLine('первая', gen);
+    let nb = createNotebook('Лента', gen);
+    nb = must(insertLine(nb, a, 0));
+    const last = createTextLine('последняя', gen);
+    const res = insertLine(nb, last, nb.lines.length);
+    expectOk(res);
+    expect(res.value.lines.map((l) => l.id)).toEqual([a.id, last.id]);
+    expectOk(validateNotebook(res.value));
+  });
+
+  it('вставляет текст-строку перед первой таб-строкой (позиция 0)', () => {
+    const { nb, line } = baseNotebook();
+    const first = createTextLine('в начало', createIdGenerator());
+    const res = insertLine(nb, first, 0);
+    expectOk(res);
+    expect(res.value.lines.map((l) => l.id)).toEqual([first.id, line.id]);
+  });
+
+  it('иммутабельность: исходная тетрадь не меняется, вставленная строка — та же ссылка', () => {
+    const { nb, line } = baseNotebook();
+    const before = JSON.stringify(nb);
+    const added = createTextLine('новая', createIdGenerator());
+    const res = insertLine(nb, added, 1);
+    expectOk(res);
+    expect(JSON.stringify(nb)).toBe(before);
+    expect(res.value.lines[1]).toBe(added);
+    // Соседние строки — те же ссылки: копируется только массив ленты.
+    expect(res.value.lines[0]).toBe(line);
+  });
+
+  it('позиция вне диапазона — отказ position-out-of-range (№36)', () => {
+    const { nb } = baseNotebook();
+    const gen = createIdGenerator();
+    for (const bad of [-1, 2, 100, 0.5, NaN]) {
+      expectErr(insertLine(nb, createTextLine('x', gen), bad), 'position-out-of-range');
+    }
+  });
+
+  it('строка не объект или неизвестного вида — отказ invalid-notebook (№6)', () => {
+    const { nb } = baseNotebook();
+    // Моделируем битый ввод: не объект, не строка ленты, чужой kind (№6).
+    const aliens: readonly unknown[] = [
+      null,
+      'текст-строка',
+      { id: 'x', kind: 'chord' }, // не tab и не text (№6)
+      { id: 'y' }, // kind отсутствует
+    ];
+    for (const alien of aliens) {
+      expectErr(insertLine(nb, alien as RibbonLine, 0), 'invalid-notebook');
     }
   });
 });
@@ -422,7 +495,7 @@ describe('операции с колонками', () => {
     const neighbour = columnId(line, 2);
     let cur = nb;
     cur = must(insertNote(cur, { lineId: line.id, columnId: victim, stringIndex: 0 }, 5, gen));
-    cur = must(addColumnText(cur, line.id, victim, 'уходит с колонкой', gen));
+    cur = must(addColumnText(cur, line.id, victim, 'уходит', gen));
     cur = must(addColumnText(cur, line.id, neighbour, 'остаётся', gen));
     const deleted = deleteColumn(cur, line.id, victim);
     expectOk(deleted);
@@ -466,6 +539,32 @@ describe('тексты колонки', () => {
     expect(cur.lines[0].kind === 'tab' ? (cur.lines[0] as TabLine).texts : []).toHaveLength(3);
     const fourth = addColumnText(cur, line.id, col, 'лишний', gen);
     expectErr(fourth, 'column-text-limit');
+  });
+
+  it('текст колонки длиннее MAX_COLUMN_TEXT_CHARS — отказ column-text-too-long (№24)', () => {
+    const { nb, line } = baseNotebook();
+    const gen = createIdGenerator();
+    // Ровно порог — ок; порог+1 — отказ. Модель не обрезает и не переносит (№24).
+    expectOk(addColumnText(nb, line.id, columnId(line, 0), '123456789012', gen));
+    expectErr(
+      addColumnText(nb, line.id, columnId(line, 1), '1234567890123', gen),
+      'column-text-too-long',
+    );
+  });
+
+  it('editColumnText на текст длиннее порога — отказ column-text-too-long (№24)', () => {
+    const { nb, line } = baseNotebook();
+    const gen = createIdGenerator();
+    const col = columnId(line, 0);
+    const added = addColumnText(nb, line.id, col, 'короткий', gen);
+    expectOk(added);
+    const textId = (added.value.lines[0] as TabLine).texts[0].id;
+    expectErr(
+      editColumnText(added.value, line.id, textId, '1234567890123'),
+      'column-text-too-long',
+    );
+    // Отказ не меняет тетрадь: текст остался прежним.
+    expect((added.value.lines[0] as TabLine).texts[0].text).toBe('короткий');
   });
 
   it('editColumnText меняет текст, id сохраняется; removeColumnText убирает', () => {
@@ -521,6 +620,23 @@ describe('validateNotebook ловит нарушения инвариантов'
 
   const firstTab = (nb: Notebook): TabLine =>
     nb.lines.find((l): l is TabLine => l.kind === 'tab') as TabLine;
+
+  it('текст колонки длиннее порога (№24)', () => {
+    expectInvalid((nb) => {
+      const tab = firstTab(nb);
+      return {
+        ...nb,
+        lines: nb.lines.map((l) =>
+          l === tab
+            ? {
+                ...tab,
+                texts: tab.texts.map((t, i) => (i === 0 ? { ...t, text: '1234567890123' } : t)),
+              }
+            : l,
+        ),
+      };
+    }, 'символов > 12');
+  });
 
   it('лад вне диапазона (№3)', () => {
     expectInvalid(
@@ -853,5 +969,48 @@ describe('id: уникальность и стабильность (№19)', () 
     const a = demoNotebookFixture();
     const b = demoNotebookFixture();
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+
+  it('фикстура и правка на одном генераторе: вставки продолжают нумерацию (R6)', () => {
+    // Апп-сценарий (wiring App): фикстура и мутации правки живут на одном
+    // генераторе. Раньше экран имел свой счётчик с нуля, и вторая текст-строка
+    // правки получала tx-2 — id заголовка фикстуры — отказ line-id-duplicate.
+    const gen = createIdGenerator();
+    let nb = demoNotebookFixture(gen);
+    nb = must(insertLine(nb, createTextLine('Новая строка 1', gen), nb.lines.length));
+    nb = must(insertLine(nb, createTextLine('Новая строка 2', gen), nb.lines.length));
+    expect(validateNotebook(nb).ok).toBe(true);
+    // Нумерация продолжилась после фикстуры (фикстура потребила 32 вызова).
+    const last = nb.lines[nb.lines.length - 1];
+    expect(last?.id).toBe('tx-34');
+  });
+});
+
+// ─── Повторная вставка той же ссылки (21.2а ревью ST-5) ────────────────────
+
+describe('insertLine: повторная вставка той же ссылки (21.2а ревью ST-5)', () => {
+  it('дубль id — отказ line-id-duplicate', () => {
+    const { nb, line } = baseNotebook();
+    const result = insertLine(nb, line, nb.lines.length);
+    expectErr(result, 'line-id-duplicate');
+  });
+
+  it('та же ссылка на другую позицию тоже отклоняется — id уже в ленте', () => {
+    const gen = createIdGenerator();
+    let nb = createNotebook('Дубль', gen);
+    const a = createTextLine('га', gen);
+    nb = must(insertLine(nb, a, 0));
+    const b = createTextLine('ра', gen);
+    nb = must(insertLine(nb, b, 1));
+    expectErr(insertLine(nb, a, 0), 'line-id-duplicate');
+  });
+
+  it('легитимная повторная вставка новой строки после отката — ok', () => {
+    const gen = createIdGenerator();
+    const rollback = createNotebook('Дубль', gen);
+    const fresh = createTextLine('ра', gen);
+    const restored = must(insertLine(rollback, fresh, 0));
+    expect(restored.lines).toHaveLength(1);
+    expect(restored.lines[0].id).toBe(fresh.id);
   });
 });

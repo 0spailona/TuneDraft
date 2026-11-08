@@ -33,6 +33,16 @@ export const MAX_FRET = 24;
 export const MAX_COLUMN_TEXTS = 3;
 
 /**
+ * Максимум символов в тексте колонки (№24): порог отклонения ввода — ввод
+ * длиннее отклоняется с предупреждением (column-text-too-long), модель не
+ * обрезает и не переносит (№24). Единственный источник истины: геометрия
+ * layout-движка выводит из неё потолок ширины колонки MAX_COLUMN_WIDTH_CHARS
+ * (№20) — направление импорта layout → tabulature легально (R1), обратное
+ * нет, поэтому дубли константы не возникает.
+ */
+export const MAX_COLUMN_TEXT_CHARS = 12;
+
+/**
  * Нота: цифра лада на струне (№19, №3, №4). Живёт в контентной колонке,
  * максимум одна на струну в колонке (№20). Правка лада сохраняет id (№21).
  */
@@ -125,20 +135,31 @@ export interface Notebook {
  * «column-is-barline» в двух смыслах): UI мапит код в сообщение, не зная,
  * какая операция его вернула.
  */
-export type ModelErrorCode =
-  | 'fret-out-of-range'
-  | 'string-index-out-of-range'
-  | 'line-not-found'
-  | 'column-not-found'
-  | 'note-not-found'
-  | 'text-not-found'
-  | 'cell-not-empty'
-  | 'column-is-barline'
-  | 'barline-already-set'
-  | 'barline-not-set'
-  | 'barline-column-not-empty'
-  | 'column-text-limit'
-  | 'invalid-notebook';
+/**
+ * Все коды ошибок модели одним кортежем (2б ревью ST-5): union выводится
+ * из кортежа, поэтому список не может разойтись с типом, а проверки
+ * полноты словаря предупреждений (№31) итерируют кортеж.
+ */
+export const MODEL_ERROR_CODES = [
+  'fret-out-of-range',
+  'string-index-out-of-range',
+  'line-not-found',
+  'column-not-found',
+  'note-not-found',
+  'text-not-found',
+  'cell-not-empty',
+  'column-is-barline',
+  'barline-already-set',
+  'barline-not-set',
+  'barline-column-not-empty',
+  'column-text-limit',
+  'column-text-too-long',
+  'position-out-of-range',
+  'line-id-duplicate',
+  'invalid-notebook',
+] as const;
+
+export type ModelErrorCode = (typeof MODEL_ERROR_CODES)[number];
 
 /**
  * Ошибка модели — значение, не исключение (EXECUTE-конвенция data-flow.md):

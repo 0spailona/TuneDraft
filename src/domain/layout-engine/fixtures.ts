@@ -1,7 +1,8 @@
-// Валидные фикстуры layout-движка (этап 3, №34): тест-данные для приёмочных
-// тестов прохода на целевую ширину. По образцу fixtures.ts этапа 2 —
-// строятся публичными фабриками и операциями модели (createTabLine / insertNote /
-// setBarline / addColumnText / createTextLine + createIdGenerator), поэтому
+// Валидные фикстуры layout-движка (№34): тест-данные для приёмочных тестов
+// прохода на целевую ширину и для тестов плана/канвы (этапы 4–5). По образцу
+// fixtures.ts модели — строятся публичными фабриками и операциями модели
+// (createTabLine / insertLine / insertNote / setBarline / addColumnText /
+// createTextLine + createIdGenerator), поэтому
 // фикстура валидна по построению и проверяется validateNotebook в тестах (№34).
 // Сам layout id не создаёт (№19) — генератор живёт только в сборке фикстур.
 
@@ -10,10 +11,10 @@ import { createIdGenerator } from '../tabulature/ids';
 import type { IdGenerator } from '../tabulature/ids';
 import {
   addColumnText,
-  appendLine,
   createNotebook,
   createTabLine,
   createTextLine,
+  insertLine,
   insertNote,
   setBarline,
 } from '../tabulature/model';
@@ -53,7 +54,7 @@ export function emptyNotebookFixture(): Notebook {
 function appendWideTabLine(nb: Notebook, gen: IdGenerator): Notebook {
   const COLUMNS = 30;
   const line = createTabLine(COLUMNS, gen);
-  let result = appendLine(nb, line);
+  let result = must(insertLine(nb, line, nb.lines.length));
   const tab = line.id;
   const col = (i: number): string => line.columns[i].id;
 
@@ -110,19 +111,19 @@ export function demoNotebookFixture(): Notebook {
   let nb = createNotebook('Широкая разминка', gen);
 
   // Текст-строка до первой таб-строки (№6).
-  nb = appendLine(nb, createTextLine('Разминка по гамме E', gen));
+  nb = must(insertLine(nb, createTextLine('Разминка по гамме E', gen), nb.lines.length));
 
   // Таб-строка A: широкая, собирается тем же генератором — id уникальны
   // в пределах тетради (№19).
   nb = appendWideTabLine(nb, gen);
 
   // Текст-строка между таб-строками (№6).
-  nb = appendLine(nb, createTextLine('Переход на A', gen));
+  nb = must(insertLine(nb, createTextLine('Переход на A', gen), nb.lines.length));
 
   // Таб-строка B: короткая без черт — ноты + текст колонки (максимальная
   // связка без черты); такт = вся строка (№36), перенос невозможен (№18).
   const lineB = createTabLine(4, gen);
-  nb = appendLine(nb, lineB);
+  nb = must(insertLine(nb, lineB, nb.lines.length));
   const tabB = lineB.id;
   const colB = (i: number): string => lineB.columns[i].id;
   nb = must(insertNote(nb, { lineId: tabB, columnId: colB(0), stringIndex: 0 }, 7, gen));
@@ -130,7 +131,7 @@ export function demoNotebookFixture(): Notebook {
   nb = must(addColumnText(nb, tabB, colB(0), 'сустейн', gen));
 
   // Текст-строка после последней таб-строки (№6).
-  nb = appendLine(nb, createTextLine('Проверь звучание', gen));
+  nb = must(insertLine(nb, createTextLine('Проверь звучание', gen), nb.lines.length));
 
   return nb;
 }

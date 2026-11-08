@@ -1,16 +1,18 @@
 // Валидные фикстуры-тетради (этап 2): тест-данные для юнит-тестов модели
 // и будущих фикстур layout-движка (этап 3). Строятся публичными фабриками
-// и операциями модели — фикстура валидна по построению и проверяется
-// validateNotebook в тестах (№34). Детерминированные id — общий генератор.
+// и операциями модели (вставка строк — через insertLine, №36) — фикстура
+// валидна по построению и проверяется validateNotebook в тестах (№34).
+// Детерминированные id — общий генератор.
 
 import type { ModelResult, Notebook } from './types';
 import { createIdGenerator } from './ids';
+import type { IdGenerator } from './ids';
 import {
   addColumnText,
-  appendLine,
   createNotebook,
   createTabLine,
   createTextLine,
+  insertLine,
   insertNote,
   setBarline,
 } from './model';
@@ -49,17 +51,21 @@ export function emptyNotebookFixture(): Notebook {
  *   текст-строка  «Переход на A»                (между таб-строками, №6)
  *   таб-строка    B: ноты + текст колонки
  *   текст-строка  «Проверь звучание»            (после последней таб-строки, №6)
+ *
+ * Генератор id (R6, №19): передаётся явно; App подставляет общий с экраном
+ * редактора генератор — нумерация продолжается после фикстуры, вставки из
+ * правки не коллидят с её id ((tx-33…), а не с tx-1…). По умолчанию
+ * создаётся локальный — тесты с demoNotebookFixture() не меняются.
  */
-export function demoNotebookFixture(): Notebook {
-  const gen = createIdGenerator();
+export function demoNotebookFixture(gen: IdGenerator = createIdGenerator()): Notebook {
   let nb = createNotebook('Басовая разминка', gen);
 
   // Текст-строка до первой таб-строки (№6).
-  nb = appendLine(nb, createTextLine('Разминка: 1-я позиция', gen));
+  nb = must(insertLine(nb, createTextLine('Разминка: 1-я позиция', gen), 0));
 
   // Таб-строка A: 9 колонок — | 0 3 5 | 0 3 5 | + финальный аккорд.
   const lineA = createTabLine(9, gen);
-  nb = appendLine(nb, lineA);
+  nb = must(insertLine(nb, lineA, 1));
   const tabA = lineA.id;
   const colA = (i: number): string => lineA.columns[i].id;
   nb = must(setBarline(nb, tabA, colA(0)));
@@ -79,11 +85,11 @@ export function demoNotebookFixture(): Notebook {
   nb = must(addColumnText(nb, tabA, colA(8), 'тоника', gen));
 
   // Текст-строка между таб-строками (№6).
-  nb = appendLine(nb, createTextLine('Переход на A', gen));
+  nb = must(insertLine(nb, createTextLine('Переход на A', gen), nb.lines.length));
 
   // Таб-строка B: ноты + текст колонки (максимальная связка без черты).
   const lineB = createTabLine(4, gen);
-  nb = appendLine(nb, lineB);
+  nb = must(insertLine(nb, lineB, nb.lines.length));
   const tabB = lineB.id;
   const colB = (i: number): string => lineB.columns[i].id;
   nb = must(insertNote(nb, { lineId: tabB, columnId: colB(0), stringIndex: 0 }, 7, gen));
@@ -91,7 +97,7 @@ export function demoNotebookFixture(): Notebook {
   nb = must(addColumnText(nb, tabB, colB(0), 'сустейн', gen));
 
   // Текст-строка после последней таб-строки (№6).
-  nb = appendLine(nb, createTextLine('Проверь звучание', gen));
+  nb = must(insertLine(nb, createTextLine('Проверь звучание', gen), nb.lines.length));
 
   return nb;
 }

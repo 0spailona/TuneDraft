@@ -1,6 +1,6 @@
 # Spec Index
 
-Navigation for TuneDraft's specification system. Project status: **stages 1–4 complete** — the Expo toolchain, the `src/` layer skeleton ([ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model (`src/domain/tabulature/`), the layout engine (`src/domain/layout-engine/`, unit-tested per №34, [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md)), and the Skia screen renderer (`src/infrastructure/rendering/`, draw plan + executor per [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)) exist; editing, storage, and PDF export are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
+Navigation for TuneDraft's specification system. Project status: **stages 1–5 complete** — the Expo toolchain, the `src/` layer skeleton ([ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model (`src/domain/tabulature/`), the layout engine (`src/domain/layout-engine/`, unit-tested per №34, [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md)), the Skia screen renderer (`src/infrastructure/rendering/`, draw plan + executor per [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)), and the editing pipeline (`src/application/editing/` + `components/editor/`, per [ADR-0006](decisions/0006-editing-application-controller-entry-glue-plan-hit-test.md)) exist; ribbon drag/virtualization, storage, and PDF export are not implemented yet. Formats and rules: [META.md](META.md). Usage guide: [WORKFLOW.md](WORKFLOW.md). Decision references `(№NN)` point to the numbered decisions table in [КАРТА-ПРОЕКТА.md](../КАРТА-ПРОЕКТА.md).
 
 ## Task → Spec
 
@@ -10,8 +10,8 @@ Navigation for TuneDraft's specification system. Project status: **stages 1–4 
 | Implement the notebook data model (roadmap stage 2 — **done**: `src/domain/tabulature/`) | [domains/tabulature/README.md](domains/tabulature/README.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
 | Implement the layout engine: geometry, column widths, wrap rules (stage 3 — **done**: `src/domain/layout-engine/`, [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md)) | [domains/layout-engine.md](domains/layout-engine.md) | [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md), [domains/rendering/README.md](domains/rendering/README.md) |
 | Implement the Skia screen renderer (stage 4 — **done**: `src/infrastructure/rendering/`, [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md)) | [domains/rendering/README.md](domains/rendering/README.md) | [domains/layout-engine.md](domains/layout-engine.md), [architecture/layers.md](architecture/layers.md) |
-| Implement note input: cell/column menus, fret panel, undo/redo (stage 5) | [domains/editing/README.md](domains/editing/README.md) | [domains/editing/cell-and-column-menus.md](domains/editing/cell-and-column-menus.md), [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
-| Implement ribbon rows: insertion, drag, delete, scroll window (stage 6) | [domains/editing/lines-and-gestures.md](domains/editing/lines-and-gestures.md) | [domains/editing/README.md](domains/editing/README.md), [domains/rendering/README.md](domains/rendering/README.md) (virtualization №28) |
+| Implement note input: cell/column menus, fret panel, undo/redo (stage 5 — **done**: `src/application/editing/` + `components/editor/`, [ADR-0006](decisions/0006-editing-application-controller-entry-glue-plan-hit-test.md)) | [domains/editing/README.md](domains/editing/README.md) | [domains/editing/cell-and-column-menus.md](domains/editing/cell-and-column-menus.md), [domains/tabulature/notebook-model.md](domains/tabulature/notebook-model.md) |
+| Implement ribbon rows: drag, delete, scroll window (stage 6) | [domains/editing/lines-and-gestures.md](domains/editing/lines-and-gestures.md) | [domains/editing/README.md](domains/editing/README.md), [domains/rendering/README.md](domains/rendering/README.md) (virtualization №28) |
 | Implement save/load, autosave pocket, library screen (stage 7) | [domains/storage/README.md](domains/storage/README.md) | [domains/storage/pocket.md](domains/storage/pocket.md), [domains/storage/library.md](domains/storage/library.md) |
 | Implement PDF export (stage 8) | [domains/rendering/pdf-export.md](domains/rendering/pdf-export.md) | [domains/rendering/README.md](domains/rendering/README.md), [domains/layout-engine.md](domains/layout-engine.md) |
 | Change navigation, Read/Edit modes, toolbar, or Back behavior | [domains/app-shell.md](domains/app-shell.md) | [architecture/layers.md](architecture/layers.md) |
@@ -26,7 +26,7 @@ Navigation for TuneDraft's specification system. Project status: **stages 1–4 
 
 ## Dependency Graph
 
-The runtime tree is the stage-1 scaffold (root `App.tsx`/`index.ts` + `src/` layer skeleton, [ADR-0003](decisions/0003-src-layer-directories.md)), the stage-2 tabulature model (`src/domain/tabulature/`), the stage-3 layout engine (`src/domain/layout-engine/`, which imports only `EntityId` from the tabulature module), and the stage-4 screen renderer (`src/infrastructure/rendering/`, which imports the layout engine's `layoutNotebook` and the tabulature `Notebook` type) — the runtime dependency graph remains close to trivial. The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
+The runtime tree has grown past the stage-1 scaffold: the stage-2 tabulature model (`src/domain/tabulature/`), the stage-3 layout engine (`src/domain/layout-engine/`, which imports only `EntityId` from the tabulature module), the stage-4 screen renderer (`src/infrastructure/rendering/`, which imports the layout engine's `layoutNotebook` and the tabulature `Notebook` type), and the stage-5 editing pipeline — the application controller (`src/application/editing/`, which imports the tabulature model downward and reaches the pocket only through its own `PocketWriter` interface) and the Entry glue (`components/editor/`, which imports the controller, the canvas, and the dictionary; [ADR-0006](decisions/0006-editing-application-controller-entry-glue-plan-hit-test.md)). The intended dependency structure of the six specified domains (downward-only, per [architecture/layers.md](architecture/layers.md); `app-shell` is the Entry Points layer, `tabulature`/`layout-engine` are Domain, `editing` orchestration is Application, `storage`/`rendering` are Infrastructure):
 
 ```
                 ┌─────────────────────────────────┐
@@ -68,7 +68,7 @@ docs/specs/
 ├── WORKFLOW.md                                how to work with the spec system
 ├── architecture/
 │   ├── layers.md                              layer model + dependency rules, mapped to domains
-│   └── data-flow.md                           five-stage operation pipeline + worked example
+│   └── data-flow.md                           five-stage operation pipeline + stage-5 worked example
 ├── domains/
 │   ├── app-shell.md                           navigation, modes, toolbar, Back, i18n, theme (№23, №28, №31, №32, №37, №39, №40)
 │   ├── layout-engine.md                       column geometry: model → coordinates, wrap rules (№14, №20, №23, №24, №28)
@@ -94,5 +94,6 @@ docs/specs/
     ├── 0002-specs-live-in-docs-specs.md
     ├── 0003-src-layer-directories.md          src/ layer directories: domain/application/infrastructure/i18n (stage 1)
     ├── 0004-layout-character-units-and-wrap-policy.md   character-unit coordinates + measure-boundary wrap (stage 3)
-    └── 0005-screen-renderer-draw-plan-and-skia-executor.md   draw plan + Skia executor, role fonts, path clef (stage 4)
+    ├── 0005-screen-renderer-draw-plan-and-skia-executor.md   draw plan + Skia executor, role fonts, path clef (stage 4)
+    └── 0006-editing-application-controller-entry-glue-plan-hit-test.md   editing controller, entry glue in components/editor/, snapshot history, PocketWriter, plan hit-test (stage 5)
 ```

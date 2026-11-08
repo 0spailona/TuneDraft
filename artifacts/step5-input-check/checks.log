@@ -1,0 +1,23 @@
+== 2026-11-07T18:16:07+03:00 typecheck ==
+npm notice run tunedraft@1.0.0 typecheck
+npm notice run tsc --noEmit
+typecheck exit: 0
+== test ==
+PASS src/infrastructure/rendering/__tests__/plan.test.ts
+PASS src/infrastructure/rendering/__tests__/hit-test.test.ts
+
+Test Suites: 9 passed, 9 total
+Tests:       194 passed, 194 total
+Snapshots:   0 total
+Time:        2.231 s, estimated 14 s
+Ran all test suites.
+test exit: 0
+== lint ==
+npm notice run tunedraft@1.0.0 lint
+npm notice run eslint .
+lint exit: 0
+== format:check ==
+npm notice run prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+format exit: 0

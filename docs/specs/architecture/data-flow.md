@@ -1,10 +1,10 @@
 # Data Flow
 
-> **Scaffold landed.** The first code exists (roadmap stage 1: Expo scaffold + `src/` layer skeleton, [ADR-0003](../decisions/0003-src-layer-directories.md)), but no five-stage operation is implemented yet: the editor pipeline (stages 1–5 of the worked example) belongs to roadmap stages 5–8. Treat this document as the contract those operations must satisfy; the `TODO: verify` markers below are resolved as the corresponding operations land (see [WORKFLOW.md](../WORKFLOW.md) §6).
+> **Pipeline exercised (roadmap stage 5).** The first editor operation — «insert a note» — is implemented: the Entry glue in `components/editor/` parses and validates input, the Application controller `src/application/editing/controller.ts` executes the pipeline, and the model mutates as values. The worked example below records the concrete file paths per stage, verified against the tree. Stages 6–8 operations (ribbon drag, save/load, PDF export) keep `TODO: verify` markers until they land (see [WORKFLOW.md](../WORKFLOW.md) §6).
 
 ## Context
 
-A data-flow contract fixed early prevents the two classic failure modes of young projects: validation scattered across layers (same check in three places, none authoritative) and internal types leaking to boundaries (changing a database row breaks an API response). This document was fixed before the first code landed; the code base now exists (scaffold, [ADR-0003](../decisions/0003-src-layer-directories.md)), and the first editor operations implementing this pipeline arrive with roadmap stages 5–8.
+A data-flow contract fixed early prevents the two classic failure modes of young projects: validation scattered across layers (same check in three places, none authoritative) and internal types leaking to boundaries (changing a database row breaks an API response). This document was fixed before the first code landed; the stage-5 editor pipeline is the first live instance of the five stages.
 
 ## Canonical Flow Shape
 
@@ -37,21 +37,21 @@ Every runtime operation — regardless of transport (HTTP, CLI, event, job) — 
 | 4. PERSIST & PROJECT | Infrastructure (via interfaces) | Durable writes, external calls, event emission. |
 | 5. DELIVER | Entry Points | Translate the operation result into the transport's vocabulary. |
 
-`TODO: verify` — the stage table and pipeline are unexercised: no editor operation is implemented yet (the stage-4 demo screen renders the model directly — model → layout → plan → picture, no boundary operation), so there is nothing to check them against. When the first operation is implemented (roadmap stage 5+), trace it through stages 1–5 and record the concrete file paths at each stage here.
+The pipeline and stage table are now exercised by the stage-5 editor operation (see the worked example below); the stage-4 demo screen remains the one render-only path with no boundary operation. Later operations (ribbon drag/save/load/export) trace the same stages when they land.
 
 ## Worked Example: "Insert a Note" (tap a cell, choose fret 7)
 
-The canonical operation of the editor (№5, №21), traced through the five stages. Domain citations point to the owning domain specs. <!-- TODO: verify — this example describes intended behavior; no code exists yet -->
+The canonical operation of the editor (№5, №21), traced through the five stages with the files that realize each one ([ADR-0006](../decisions/0006-editing-application-controller-entry-glue-plan-hit-test.md)):
 
-| Stage | What happens | Owned by |
-| ----- | ------------ | -------- |
-| 1. RECEIVE | A tap lands on the editor ribbon; the gesture handler delivers the raw touch event. No interpretation — the event is only located in screen space. | [app-shell](../domains/app-shell.md) / editing UI glue (Entry Points) |
-| 2. PARSE & VALIDATE | Hit-testing resolves the tap to a cell (`stringIndex`, `columnIndex`). The tap opens the bottom fret panel (№36); the user's choice "fret 7" is validated: Edit mode active (№40), the cell is empty, the column is a content column rather than a barline column (№18, №21), and `fret` is within 0–24 (№3). Output: a typed `insertNote` intent. | [editing](../domains/editing/README.md) (Entry Points / Application edge) |
-| 3. EXECUTE | The tabulature model creates a `Note { id: new, stringIndex, fret: 7, duration }` attached to the column (№19, №20); the previous state is pushed onto the undo history (≤ 3, №25); the layout engine recomputes geometry — the column may widen, the system may re-wrap (№14, №20). Pure computation; errors are values. | [tabulature](../domains/tabulature/notebook-model.md) + [layout-engine](../domains/layout-engine.md) (Domain) |
-| 4. PERSIST & PROJECT | The mutated draft notebook is serialized into the single autosave pocket — one write per user action (№26). No `tet-<id>.json` write occurs here: the permanent file is touched only by «Сохранить» (№26). | [storage/pocket](../domains/storage/pocket.md) (Infrastructure, via interfaces) |
-| 5. DELIVER | The Skia renderer redraws the visible window — visible rows ± margin, not the whole document (№28); the fret panel and selection UI update. | [rendering](../domains/rendering/README.md) + app-shell (Entry Points) |
+| Stage | What happens | Files (verified) |
+| ----- | ------------ | ---------------- |
+| 1. RECEIVE | The tap lands on the canvas; `Gesture.Tap()` in `NotebookCanvas` receives the raw touch — a point in screen space, no interpretation; the worklet forwards the point to JS via `runOnJS`. | `src/infrastructure/rendering/NotebookCanvas.tsx` (Infrastructure host of the gesture surface the Entry screen consumes) |
+| 2. PARSE & VALIDATE | `hitTestPlan` resolves the point against the plan's `hitZones` to a selection target — a cell (`lineId`, `columnId`, `stringIndex`), a column, or `null`; rendering's `SelectionTarget` maps onto the application `Selection`. `EditorScreen` gates on Edit mode (№40) and the user's fret choice arrives from the bottom panel (digits 0–24 only, №3, №21); the intent is a typed `EditorIntent`. | `src/infrastructure/rendering/hit-test.ts`, `plan.ts` (zones); `components/editor/EditorScreen.tsx` (mode gate, intent build) |
+| 3. EXECUTE | `applyIntent` calls the pure model operation `insertNote` — a fresh note id, `duration` defaults to quarter (№4); on refusal (`ModelResult` err) the notebook, history, and pocket are untouched and an `EditorWarning` value is returned; on success the pre-mutation snapshot is pushed onto the undo history (≤ 3, №25) and the redo branch is cleared (№37). Pure computation, errors as values. | `src/application/editing/controller.ts`, `history.ts`; `src/domain/tabulature/model.ts` |
+| 4. PERSIST & PROJECT | The controller returns the effect `{ kind: 'write-pocket', notebook }`; the Entry level executes it through its `PocketWriter`. Stage 5 ships a no-op writer (the pocket file write is stage 7); no `tet-<id>.json` write occurs — the permanent file is touched only by «Сохранить» (№26). | `components/editor/EditorScreen.tsx` (pocket effect execution); `src/application/editing/types.ts` (`PocketWriter`) |
+| 5. DELIVER | The new `EditorState` flows back through `useReducer` → re-render: `NotebookCanvas` rebuilds layout → plan → picture for the mutated notebook, the selection/panel update, and a refusal surfaces as a warning strip mapped through the dictionary (№31). | `components/editor/EditorScreen.tsx` (state rendering, warning); `src/infrastructure/rendering/NotebookCanvas.tsx` (redraw) |
 
-The example demonstrates each invariant below: validation happens once at stage 2; the domain never sees a touch event; the pocket write (side effect) waits for stage 4; storage types never reach the render path.
+The example demonstrates each invariant below: validation happens once at stage 2 (the hit-test and the panel's digit range); the domain never sees a touch event; the pocket write (side effect) waits for stage 4; storage types never reach the render path.
 
 
 ## Invariants

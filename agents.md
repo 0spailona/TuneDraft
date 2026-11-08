@@ -5,17 +5,22 @@
 **TuneDraft** — Android-приложение: табулатурная тетрадь для бас-гитариста
 (4 струны E–A–D–G, лады 0–24, экспорт в PDF A4 портрет).
 
-**Текущее состояние: этап 4 завершён.** В репозитории: Expo-каркас (TypeScript) и слои
+**Текущее состояние: этап 5 завершён.** В репозитории: Expo-каркас (TypeScript) и слои
 `src/` ([ADR-0003](docs/specs/decisions/0003-src-layer-directories.md)) — entry-файлы в корне
 (`index.ts`, `App.tsx`), словарь строк `src/i18n/` (№31), модель данных тетради
 `src/domain/tabulature/` (типы, иммутабельные мутации с ошибками-значениями, детерминированные
 id, фикстуры; юнит-тесты №34 зелёные), layout-движок `src/domain/layout-engine/`
 (проход MEASURE → WRAP → EMIT в символах-единицах, [ADR-0004](docs/specs/decisions/0004-layout-character-units-and-wrap-policy.md);
-юнит- и приёмочные тесты зелёные, №34) и экранный рендер `src/infrastructure/rendering/`
+юнит- и приёмочные тесты зелёные, №34), экранный рендер `src/infrastructure/rendering/`
 (план отрисовки plan.ts + Skia-исполнитель skia.ts + NotebookCanvas.tsx + тема theme.ts,
-[ADR-0005](docs/specs/decisions/0005-screen-renderer-draw-plan-and-skia-executor.md); тесты плана зелёные, №34).
-`App.tsx` показывает демо-тетрадь «как тетрадь» и пересобирает layout при повороте (№23).
-`src/application/` — пока README с правилами слоёв. Ввод, хранение, PDF-экспорт — этапы 5–8.
+[ADR-0005](docs/specs/decisions/0005-screen-renderer-draw-plan-and-skia-executor.md); тесты плана зелёные, №34)
+и конвейер редактирования (этап 5, [ADR-0006](docs/specs/decisions/0006-editing-application-controller-entry-glue-plan-hit-test.md)):
+контроллер `src/application/editing/` (интенты, история отмен снимками ≤ 3 — №25, чистый
+`applyIntent`, эффект кармана через интерфейс `PocketWriter`) и Entry-клей `components/editor/`
+(экран редактора: тулбар №37, переключатель Править/Чтение №40, hit-тест по плану, нижние
+панели ячейки/колонки №21/№35, «+» и лонг-тап №36, модалка текста №27). `App.tsx` показывает
+демо-тетрадь на экране редактора в правке и пересобирает layout при повороте (№23).
+Drag/корзина строк и виртуализация — этап 6, хранение — этап 7, PDF-экспорт — этап 8.
 Новый код обязан ложиться в уже зафиксированную дисциплину (слои, спеки, ADR).
 
 ## Карта документации (читать перед действием)
