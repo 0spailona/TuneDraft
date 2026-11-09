@@ -11,14 +11,19 @@ one action (№26).
 
 ## Key Files
 
-None yet — this domain's code is not implemented yet (the repository already ships the model, layout engine, and screen renderer — stages 2–4; this domain's roadmap stage has not run). <!-- TODO: verify when pocket code lands -->
+Storage I/O lands at stage 7. Stage 5 already ships the write seam: the editing
+controller emits the `write-pocket` effect (`src/application/editing/`), Entry executes
+it through the `PocketWriter` interface (no-op implementation until stage 7). <!-- TODO: verify when pocket code lands -->
 
 ## Behavior
 
 ### Write policy
 
 The pocket is written **after every model-changing action** performed in edit mode (№26).
-Reading mode does not mutate the model and does not touch the pocket.
+Undo/redo (№37) are model-changing actions too: the pocket is rewritten after them as
+well, in both modes — the pocket always holds the currently visible draft, so a crash
+or restore never resurrects an undone action. Otherwise, reading mode does not mutate
+the model and does not touch the pocket.
 
 ### Lifecycle
 
@@ -81,6 +86,8 @@ The following hold for the pocket code once it exists. <!-- TODO: verify each in
 - The pocket is one per application and holds at most the single currently open notebook
   (only one notebook can be open at a time, №26, №40).
 - The pocket is updated after every model-changing action in edit mode. (№26)
+- Undo/redo (№37) rewrite the pocket in both modes: the pocket always equals the
+  visible draft, and restore never brings back an undone action. (№26)
 - A deliberate refusal at «Закрыть» clears the pocket immediately. (№26)
 - A successful restore or save always ends with a cleared pocket. (№26)
 - Restore recreates `tet-<id>.json` when that file is missing. (№26)

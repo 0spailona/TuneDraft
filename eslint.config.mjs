@@ -2,7 +2,9 @@
 //   src/domain/**         — R1: без I/O, фреймворков, UI- и тестовых библиотек;
 //   src/application/**    — R2: без фреймворков/UI, entry-файлов и infrastructure
 //                           (превентивно, до появления кода слоя);
-//   src/infrastructure/** — R4-симметрия: без entry-файлов (превентивно).
+//   src/infrastructure/** — R4-симметрия: без entry-файлов (превентивно);
+//                           без тяготения вверх в application/i18n (R3,
+//                           зона 3 в import/no-restricted-paths ниже).
 // Правила форматирования отданы prettier (eslint-config-prettier последним).
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -40,7 +42,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/domain/**/*.ts'],
+    files: ['src/domain/**/*.{ts,tsx}'],
     rules: {
       // R1: Domain чистый — только относительные импорты внутри слоя
       'no-restricted-imports': [
@@ -79,7 +81,7 @@ export default tseslint.config(
     // ВАЖНО: все зоны в одном объекте (в flat config одноимённое правило из
     // последнего объекта перезаписывает предыдущее), а from/except — директории,
     // не globs: glob-`from` в import-x v4 не применяет except.
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.{ts,tsx}'],
     rules: {
       'import/no-restricted-paths': [
         'error',
@@ -97,6 +99,15 @@ export default tseslint.config(
             // Зона 2: entry-файлы — только wiring, из слоёв не импортируются
             // (from — конкретные файлы: не-glob валидаторы, точное совпадение пути).
             { target: './src', from: ['./App.tsx', './index.ts'] },
+            // Зона 3 (2-й тур ревью ST-5, находка 6): infrastructure не тянется
+            // вверх — application и i18n недостижимы (R3/ADR-0006: rendering
+            // живёт типами domain и своими, PocketWriter — интерфейс application;
+            // i18n — зона Entry). Вниз разрешены только domain и сам слой.
+            {
+              target: './src/infrastructure',
+              from: './src',
+              except: ['./domain', './infrastructure'],
+            },
           ],
         },
       ],
@@ -106,7 +117,7 @@ export default tseslint.config(
     // R2 (превентивно, до появления кода слоя): Application вызывает Domain и
     // получает возможности Infrastructure только через собственные интерфейсы —
     // ни фреймворков и UI, ни entry-файлов, ни прямых импортов из infrastructure/.
-    files: ['src/application/**/*.ts'],
+    files: ['src/application/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -147,7 +158,9 @@ export default tseslint.config(
   {
     // R4-симметрия (превентивно): Infrastructure — реализации интерфейсов, а не
     // точки входа; expo-* здесь разрешены (expo-file-system, expo-print — его зона).
-    files: ['src/infrastructure/**/*.ts'],
+    // tsx включён (19 ревью ST-5): NotebookCanvas.tsx и компоненты экрана
+    // (components/) — тоже R4-клей, гард entry-импортов на них распространяется.
+    files: ['src/infrastructure/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -158,6 +171,23 @@ export default tseslint.config(
               message: 'Infrastructure не импортирует entry-файлы (R4: их зона — только wiring).',
             },
           ],
+        },
+      ],
+    },
+  },
+  {
+    // R4 для components/ (10а ревью ST-5): entry-файлы недоступны и отсюда.
+    // Отдельный объект (не в src-блоке import/no-restricted-paths): files
+    // не пересекаются — правила не перезаписывают друг друга. Важно именно
+    // import/no-restricted-paths, а не regex: regex-паттерн R4-блока выше
+    // матчит лишь bare-спецификаторы без расширения и пропускает
+    // '../../App.tsx'.
+    files: ['components/**/*.{ts,tsx}'],
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [{ target: './components', from: ['./App.tsx', './index.ts'] }],
         },
       ],
     },

@@ -8,11 +8,11 @@ Specifications provide AI coding agents with deterministic context about system 
 
 ## Current Project State
 
-TuneDraft has passed the bootstrap threshold: **roadmap stages 1–4 are complete** — the repository contains the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model in `src/domain/tabulature/` (entities, mutations, fixtures; unit tests per №34), the layout-engine kernel in `src/domain/layout-engine/` (width/capacity arithmetic and wrap rules, character-unit coordinates per [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md); unit tests per №34), and the screen renderer in `src/infrastructure/rendering/` — deterministic draw plan + Skia executor per [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md) (plan unit tests per №34). `src/application/` still holds its layer-rule README only; `src/infrastructure/` contains the rendering module — storage remains for stage 7, editing for stage 5, and the HTML→PDF pipeline for stage 8.
+TuneDraft has passed the bootstrap threshold: **roadmap stages 1–5 are complete** — the repository contains the Expo scaffold and the `src/` layer skeleton (see [ADR-0003](decisions/0003-src-layer-directories.md)), the tabulature notebook model in `src/domain/tabulature/` (entities, mutations — including `insertLine`, introduced at stage 5; fixtures; unit tests per №34), the layout-engine kernel in `src/domain/layout-engine/` (width/capacity arithmetic and wrap rules, character-unit coordinates per [ADR-0004](decisions/0004-layout-character-units-and-wrap-policy.md); unit tests per №34), the screen renderer in `src/infrastructure/rendering/` — deterministic draw plan + Skia executor per [ADR-0005](decisions/0005-screen-renderer-draw-plan-and-skia-executor.md) (plan and hit-test unit tests per №34), and the editing pipeline per [ADR-0006](decisions/0006-editing-application-controller-entry-glue-plan-hit-test.md) — the first Application-layer code (`src/application/editing/`: intent union, snapshot undo/redo history ≤ 3, pure `applyIntent` pipeline) plus the Entry-level editor screen (`components/editor/`: toolbar, mode switch, hit-test dispatch, bottom panels). `App.tsx` renders the editor screen on the demo notebook. Storage remains for stage 7 (the pocket is reachable only through the `PocketWriter` interface with a no-op stage-5 implementation), ribbon drag/virtualization for stage 6, and the HTML→PDF pipeline for stage 8.
 
 The spec system itself is complete: the six real domains of the intended system — `tabulature`, `layout-engine`, `editing`, `app-shell`, `storage`, `rendering` — are fully specified (see [INDEX.md](INDEX.md)), derived from the 40 numbered decisions of `docs/КАРТА-ПРОЕКТА.md` (referenced as `(№NN)`). The bootstrap exemplar `domains/placeholder-domain/` was deleted when these domains landed, per its own banner.
 
-The `architecture/` placeholders have transitioned: [layers.md](architecture/layers.md) now maps the canonical layers onto the real `src/` directories and records an R1–R6 audit of the shipped code; [data-flow.md](architecture/data-flow.md) keeps its five-stage contract forward-looking until the first editor operation lands (roadmap stages 5–8).
+The `architecture/` placeholders have transitioned: [layers.md](architecture/layers.md) now maps the canonical layers onto the real `src/` directories and `components/editor/` and records an R1–R6 audit of the shipped code; [data-flow.md](architecture/data-flow.md) records the stage-5 editor operation as the first live trace of the five-stage pipeline (stages 6–8 operations stay forward-looking).
 
 Implications for all spec authors:
 
@@ -67,7 +67,8 @@ docs/specs/
     ├── 0002-specs-live-in-docs-specs.md
     ├── 0003-src-layer-directories.md
     ├── 0004-layout-character-units-and-wrap-policy.md
-    └── 0005-screen-renderer-draw-plan-and-skia-executor.md
+    ├── 0005-screen-renderer-draw-plan-and-skia-executor.md
+    └── 0006-editing-application-controller-entry-glue-plan-hit-test.md
 ```
 
 When the first real domain is identified: create `domains/<domain>/README.md`, update `INDEX.md`. (The bootstrap exemplar `domains/placeholder-domain/` was deleted when the six real domains landed.) When the first real boundary is identified: create `contracts/<layer-a>-<layer-b>.md` from `contracts/_template.md` and update `INDEX.md`.

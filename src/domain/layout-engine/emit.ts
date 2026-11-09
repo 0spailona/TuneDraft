@@ -63,7 +63,8 @@ export function emitStringYChars(tuning: readonly number[]): readonly number[] {
  * от нижней строки струн, дальше — по строке на каждый текст стопки. Стопка —
  * на всю систему (тексты всех её колонок), x каждой строки — x его колонки.
  * ФИНАЛЬНОЕ ЗНАЧЕНИЕ (№32): согласовано с темой рендера — тексты колонок
- * рисуются моно-семейством меньшим кеглем (theme.ts), шаг стопки — 1 символ.
+ * рисуются моно-семейством меньшим кеглем (theme.ts); шаг стопки задаёт
+ * TEXT_ROW_SPACING_CHARS (config.ts, история значения — ADR-0005 п.4).
  */
 function textStackYChars(bottomStringYChars: number, row: number): number {
   return bottomStringYChars + (row + 1) * TEXT_ROW_SPACING_CHARS;

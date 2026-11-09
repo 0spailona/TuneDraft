@@ -31,7 +31,7 @@ Persistence as JSON is stage-7 infrastructure (№29).
 | ColumnText | stable `id` (№19), `columnId` (№19), text content | Attached to a column by `columnId`; max 3 per column (№6). |
 | Cell | (derived: a string × column intersection; no own `id`) | An empty cell is a rest — a rest entity in its own right, distinct from a deleted column (№20). |
 
-The table matches `src/domain/tabulature/types.ts` (verified at stage 2); lines carry a `kind: 'tab' | 'text'` discriminator. JSON serialization itself is stage 7.
+The table matches `src/domain/tabulature/types.ts` (verified against the `MODEL_ERROR_CODES` tuple — stage 2, re-verified with stage 5, when `insertLine` added `line-id-duplicate`); lines carry a `kind: 'tab' | 'text'` discriminator. JSON serialization itself is stage 7.
 
 ### Column state machine
 
@@ -64,6 +64,14 @@ Column-menu operations (№35) act on whole columns:
 - **Clear column** — all notes and texts of a content column are removed; the column itself remains. For a barline column, "clear" removes the barline state (№18).
 - **Delete column** — the column is removed wholly, with all its content — the cascade (№19).
 
+### Ribbon line insertion (№36, stage 5)
+
+Row insertion at the model level always goes through `insertLine(notebook, line, position): ModelResult<Notebook>` in `src/domain/tabulature/model.ts` — the only ribbon-line insertion path for runtime code (editing stage 5: the «+» button and the long-press both route through it).
+
+- `position` is the index into the ribbon, valid range `0..lines.length` (`lines.length` appends to the end).
+- Refusals: `position` not an integer or outside `0..lines.length` → `position-out-of-range` (№36); the line is not an object or carries a kind other than `tab`/`text` → `invalid-notebook` (№6); the line carries an id already living in the ribbon (re-inserting the same line reference — including the post-undo scenario) → `line-id-duplicate` (№19, №36).
+- The insertion is immutable: the source notebook and its other lines are left untouched (EXECUTE convention, [data-flow.md](../../architecture/data-flow.md)).
+
 ### Attachment and cascade rules
 
 ```
@@ -90,6 +98,7 @@ Notebook ──contains──▶ TabLine ──contains──▶ Column ──co
 | Tuning entries | `tuning` is a non-empty list of integers (MIDI note numbers) | (№2) |
 | One note per string per column | at most one note per (column, string) | (№20) |
 | Column text limit | at most 3 texts attached to one column | (№6) |
+| Column text length | a column text is at most 12 characters long — longer input is refused, never truncated or wrapped | (№24) |
 | Barline purity | a barline column holds no notes and no texts | (№18) |
 | Barline insertion precondition | barline conversion applies only to a column free of notes and texts | (№18) |
 | Note edit identity | a fret edit preserves the note's `id` | (№21) |
@@ -101,7 +110,7 @@ This validation summary is the contract of `src/domain/tabulature/__tests__/note
 
 The model layer returns violations as values; it never throws across boundaries as control flow — the EXECUTE-stage convention of [architecture/data-flow.md](../../architecture/data-flow.md). Implemented as the `ModelResult<T>` union in `src/domain/tabulature/types.ts`.
 
-Each operation's refusal carries its own `ModelErrorCode`: the UI maps a code to a message without knowing which operation produced it, so two operations never share one code with opposite meanings. The full catalog (from `types.ts`, stage 2):
+Each operation's refusal carries its own `ModelErrorCode`: the UI maps a code to a message without knowing which operation produced it, so two operations never share one code with opposite meanings. The full catalog (from `types.ts`):
 
 | Code | Returned by |
 | ---- | ----------- |
@@ -117,13 +126,18 @@ Each operation's refusal carries its own `ModelErrorCode`: the UI maps a code to
 | `barline-not-set` | `clearBarline` — the column is not a barline (№18) |
 | `barline-column-not-empty` | `setBarline` — the column holds notes or texts (№18) |
 | `column-text-limit` | `addColumnText` — 4th text on a column (№6) |
-| `invalid-notebook` | `validateNotebook` — aggregate violations list (№34) |
+| `column-text-too-long` | `addColumnText`, `editColumnText` — text longer than 12 characters (№24) |
+| `position-out-of-range` | `insertLine` — position not an integer in `0..lines.length` (№36) |
+| `line-id-duplicate` | `insertLine` — the line's id already lives in the ribbon (re-insertion of the same line reference, №19, №36) |
+| `invalid-notebook` | `validateNotebook` — aggregate violations list (№34); `insertLine` — the line is not an object or of unknown kind (№6) |
 
 | Violation | Intended model response |
 | --------- | ---------------------- |
 | Fret out of 0–24 (№3) | reject the mutation with a validation value; UI never offers out-of-range buttons (№21). |
+| Insert position outside `0..lines.length` (№36) | reject with `position-out-of-range`; the UI only offers valid spots on the ribbon. |
 | Barline into a column with notes (№18) | reject; the menu entry is also disabled (№18). |
 | 4th column text (№6) | reject with a limit violation; editing surfaces a warning dialog (№35). |
+| Column text longer than 12 characters (№24) | reject with `column-text-too-long`; warning, no truncation or wrapping. |
 | `columnId` referencing a deleted/nonexistent column | unrepresentable by construction: cascade delete removes texts with the column (№19). |
 
 ## Invariants
@@ -134,6 +148,7 @@ Each operation's refusal carries its own `ModelErrorCode`: the UI maps a code to
 - A column always is either a content column or a barline column, never both (№18).
 - A barline column always holds no notes and no texts (№18).
 - A content column always holds at most one note per string and at most 3 texts (№20, №6).
+- Every column text always is at most 12 characters long; input beyond the threshold is always rejected with `column-text-too-long`, never truncated (№24).
 - Every note always stores `fret` in 0–24 and a `duration` (№3, №4).
 - Every column text always references a column by `columnId` (№19).
 - Deleting a column always deletes its notes and texts (№19).
